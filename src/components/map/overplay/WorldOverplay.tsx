@@ -168,7 +168,7 @@ export default function WorldOverlay({
           key={p.id}
           className="absolute z-[100] pointer-events-none"
           style={{
-            left: p.x,
+            left: p.x +140,
             top: p.y,
             animation: "floatUp 1s forwards",
           }}
