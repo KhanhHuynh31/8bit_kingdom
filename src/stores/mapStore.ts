@@ -41,6 +41,7 @@ interface MapState {
 // Giá trị mặc định
 const DEFAULT_CAMERA: Camera = { offsetX: 0, offsetY: 0, zoom: 1 };
 const DEFAULT_YT_STATS: YtStats = { subscribers: 0, views: 0, lastUpdated: 0 };
+export const YOUTUBE_CHANNEL_ID = "UCXA1PWUJIHV_PDStz7ksAUg";
 
 export const useMapStore = create<MapState>()(
   persist(
