@@ -73,7 +73,7 @@ export default function InfoModal() {
       onClick={() => selectBuilding(null)}
     >
       <div
-        className="relative w-full max-w-5xl h-full rounded-sm overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-500"
+        className="relative w-full max-w-5xl h-full rounded-sm animate-in fade-in slide-in-from-bottom-2 duration-500"
         style={{
           background:
             "linear-gradient(160deg, #2a1e0e 0%, #1c1408 50%, #221910 100%)",
