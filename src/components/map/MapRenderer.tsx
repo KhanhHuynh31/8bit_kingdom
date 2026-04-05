@@ -33,20 +33,6 @@ function getFogCanvas(width: number, height: number) {
   return { fogOffscreen, fogCtx: fogCtx! };
 }
 
-// ─── BACKGROUND CACHE ──────────────────────────────────────────────────────
-// Chỉ re-render background khi camera thực sự thay đổi
-let bgOffscreen: OffscreenCanvas | null = null;
-let bgCtx: OffscreenCanvasRenderingContext2D | null = null;
-let lastBgKey = "";
-
-function getBackgroundCanvas(width: number, height: number) {
-  if (!bgOffscreen || bgOffscreen.width !== width || bgOffscreen.height !== height) {
-    bgOffscreen = new OffscreenCanvas(width, height);
-    bgCtx = bgOffscreen.getContext("2d") as OffscreenCanvasRenderingContext2D;
-  }
-  return { bgOffscreen, bgCtx: bgCtx! };
-}
-
 // ─── SHAKE NOISE TABLE (thay Math.random trong RAF) ────────────────────────
 // Pre-generate 256 giá trị noise → lookup thay random mỗi frame
 const NOISE_TABLE = new Float32Array(256);
@@ -156,7 +142,7 @@ function drawFogOfWar(
   ctx.drawImage(fogOffscreen, 0, 0);
 }
 
-// ─── BACKGROUND ─────────────────────────────────────────────────────────────
+// Trong MapRenderer.ts - Thay thế hàm drawBackground cũ
 function drawBackground(
   ctx: CanvasRenderingContext2D,
   cam: Camera,
@@ -166,31 +152,25 @@ function drawBackground(
   cX: number,
   cY: number,
 ) {
-  // Cache key: chỉ re-render khi camera hoặc size thực sự thay đổi
-  const bgKey = `${cam.offsetX.toFixed(1)}_${cam.offsetY.toFixed(1)}_${cam.zoom.toFixed(2)}_${w}_${h}`;
-  const { bgOffscreen: bg, bgCtx: bctx } = getBackgroundCanvas(w, h);
+  // Tính toán vùng hiển thị
+  const startCol = Math.floor((-cX - cam.offsetX) / sTile) - 1;
+  const endCol   = Math.ceil((w - cX - cam.offsetX) / sTile) + 1;
+  const startRow = Math.floor((-cY - cam.offsetY) / sTile) - 1;
+  const endRow   = Math.ceil((h - cY - cam.offsetY) / sTile) + 1;
 
-  if (bgKey !== lastBgKey) {
-    lastBgKey = bgKey;
+  // Thêm 1px để tránh khe hở giữa các tile khi zoom
+  const tileW = Math.ceil(sTile) + 1;
 
-    const startCol = Math.floor((-cX - cam.offsetX) / sTile) - 1;
-    const endCol   = Math.ceil((w - cX - cam.offsetX) / sTile) + 1;
-    const startRow = Math.floor((-cY - cam.offsetY) / sTile) - 1;
-    const endRow   = Math.ceil((h - cY - cam.offsetY) / sTile) + 1;
-
-    const tileW = Math.ceil(sTile) + 1;
-
-    for (let col = startCol; col <= endCol; col++) {
-      const x = Math.floor(cX + cam.offsetX + col * sTile);
-      for (let row = startRow; row <= endRow; row++) {
-        const y = Math.floor(cY + cam.offsetY + row * sTile);
-        bctx.fillStyle = GLOBAL_COLORS.grass[(col + row) % 2 === 0 ? 1 : 0];
-        bctx.fillRect(x, y, tileW, tileW);
-      }
+  for (let col = startCol; col <= endCol; col++) {
+    const x = Math.floor(cX + cam.offsetX + col * sTile);
+    for (let row = startRow; row <= endRow; row++) {
+      const y = Math.floor(cY + cam.offsetY + row * sTile);
+      
+      // Vẽ trực tiếp lên ctx chính, không qua cache key
+      ctx.fillStyle = GLOBAL_COLORS.grass[(Math.abs(col + row)) % 2 === 0 ? 1 : 0];
+      ctx.fillRect(x, y, tileW, tileW);
     }
   }
-
-  ctx.drawImage(bg, 0, 0);
 }
 
 // ─── TORCH EFFECT ───────────────────────────────────────────────────────────
