@@ -1,5 +1,6 @@
-/** @type {import('next').NextConfig} */
-const nextConfig = {
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
   images: {
     remotePatterns: [
       {
@@ -8,13 +9,6 @@ const nextConfig = {
         pathname: "/**",
       },
     ],
-  },
-  // Thêm dòng này để "bỏ qua" các lỗi lint vặt vãnh khi build
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
-  typescript: {
-    ignoreBuildErrors: true,
   },
 };
 
