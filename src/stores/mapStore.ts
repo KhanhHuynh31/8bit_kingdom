@@ -12,6 +12,9 @@ export interface News {
 interface YtStats {
   subscribers: number;
   views: number;
+  totalLikes: number;
+  totalComments: number;
+  videoCount: number;
   lastUpdated: number;
 }
 
@@ -40,7 +43,14 @@ interface MapState {
 
 // Giá trị mặc định
 const DEFAULT_CAMERA: Camera = { offsetX: 0, offsetY: 0, zoom: 1 };
-const DEFAULT_YT_STATS: YtStats = { subscribers: 0, views: 0, lastUpdated: 0 };
+const DEFAULT_YT_STATS: YtStats = {
+  subscribers: 0,
+  views: 0,
+  totalLikes: 0,
+  totalComments: 0,
+  videoCount: 0,
+  lastUpdated: 0,
+};
 export const YOUTUBE_CHANNEL_ID = "UCXA1PWUJIHV_PDStz7ksAUg";
 
 export const useMapStore = create<MapState>()(
@@ -60,10 +70,10 @@ export const useMapStore = create<MapState>()(
 
       fetchYtStats: async (force = false) => {
         const { ytStats, isLoading } = get();
-        
+
         // Kiểm tra thời gian: 60 phút (3600000 ms)
         const isExpired = Date.now() - ytStats.lastUpdated > 3600000;
-        
+
         // ĐIỀU KIỆN CHẠY API:
         // 1. Được gọi ép buộc (force = true)
         // 2. HOẶC Dữ liệu hiện tại đang là 0 (chưa có data)
@@ -76,12 +86,15 @@ export const useMapStore = create<MapState>()(
         try {
           const res = await fetch("/api/youtube");
           const json = await res.json();
-          
+
           if (json.subscribers !== undefined) {
             set({
               ytStats: {
                 subscribers: parseInt(json.subscribers),
                 views: parseInt(json.views),
+                totalLikes: json.totalLikes ?? 0,
+                totalComments: json.totalComments ?? 0,
+                videoCount: parseInt(json.videoCount ?? "0"),
                 lastUpdated: Date.now(),
               },
               isLoading: false,
@@ -160,8 +173,8 @@ export const useMapStore = create<MapState>()(
         unlockedMemories: state.unlockedMemories,
         ytStats: state.ytStats, // Lưu lại để lần sau mở web có data ngay
       }),
-    }
-  )
+    },
+  ),
 );
 
 // ─── Selector Helpers (Tối ưu render cho Next.js 16) ─────────────────────────
@@ -174,10 +187,13 @@ export const selectIsLoading = (s: MapState) => s.isLoading;
 export const selectLatestNews = (s: MapState) => s.latestNews;
 
 // Computed State (Số liệu phái sinh - không cần lưu trữ trực tiếp)
-export const selectTotalEnergy = (s: MapState) => 
-  (s.ytStats.subscribers * 100) + (s.ytStats.views * 1);
+export const selectTotalEnergy = (s: MapState) =>
+  s.ytStats.subscribers * 100 + // 1 Sub     = 100 Sét
+  s.ytStats.views * 1 + // 1 View    = 1 Sét
+  s.ytStats.totalLikes * 50 + // 1 Like    = 50 Sét
+  s.ytStats.totalComments * 10; // 1 Comment = 10 Sét
 
-// Chú ý: Khi dùng Actions trong Component, nên lấy lẻ từng hàm 
+// Chú ý: Khi dùng Actions trong Component, nên lấy lẻ từng hàm
 // hoặc dùng useShallow để tránh lỗi "getSnapshot" infinite loop.
 export const selectActions = (s: MapState) => ({
   setCamera: s.setCamera,
