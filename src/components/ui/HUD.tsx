@@ -228,7 +228,7 @@ export default function HUD({
       {/* BANNER TRUNG TÂM */}
       <div className="absolute top-4 left-1/2 -translate-x-1/2 select-none pointer-events-none">
         <span className="bg-black/90 text-yellow-400 text-[10px] md:text-xs px-5 py-2 rounded-full border border-yellow-400/20 tracking-[0.3em] shadow-2xl ">
-          8BIT KINGDOM
+          KINGDOM 8BIT
         </span>
       </div>
     </div>

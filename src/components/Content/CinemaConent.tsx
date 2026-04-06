@@ -2,7 +2,7 @@
 
 import { Building } from "@/types";
 import Image from "next/image";
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Play,
   Sparkles,
@@ -12,63 +12,93 @@ import {
   Eye,
   Clock,
   ChevronRight,
+  Loader2,
+  X,
 } from "lucide-react";
+import type { YtVideo } from "@/app/api/youtube/videos/route";
+
+// ─── Relative time helper ─────────────────────────────────────────────────────
+function relativeTime(iso: string): string {
+  const diff = (Date.now() - new Date(iso).getTime()) / 1000;
+  if (diff < 3600) return `${Math.floor(diff / 60)} phút`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)} giờ`;
+  if (diff < 604800) return `${Math.floor(diff / 86400)} ngày`;
+  if (diff < 2592000) return `${Math.floor(diff / 604800)} tuần`;
+  return `${Math.floor(diff / 2592000)} tháng`;
+}
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+type CategoryId = "all" | "video" | "short";
+
+const CATEGORIES: {
+  id: CategoryId;
+  label: string;
+  icon: React.ElementType;
+  color: string;
+}[] = [
+  { id: "all", label: "Tất cả", icon: Sparkles, color: "#c8a040" },
+  { id: "video", label: "Viễn chinh", icon: ScrollText, color: "#7aaad4" },
+  { id: "short", label: "Bí kíp", icon: FlaskConical, color: "#60c090" },
+];
 
 export const CinemaContent = ({ data }: { data: Building }) => {
-  const [selectedCat, setSelectedCat] = useState("all");
+  const [selectedCat, setSelectedCat] = useState<CategoryId>("all");
+  const [videos, setVideos] = useState<YtVideo[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [activeId, setActiveId] = useState<string | null>(null); // modal embed
+  const [featuredId, setFeaturedId] = useState<string | null>(null); // main screen
 
-  const categories = [
-    { id: "all", label: "Tất cả", icon: Sparkles, color: "#c8a040" },
-    { id: "vlog", label: "Viễn chinh", icon: ScrollText, color: "#7aaad4" },
-    { id: "tutorial", label: "Bí kíp", icon: FlaskConical, color: "#60c090" },
-    { id: "live", label: "Trực biến", icon: Flame, color: "#c06050" },
-  ];
+  // ── Fetch danh sách video ──────────────────────────────────────────────────
+  useEffect(() => {
+    fetch("/api/youtube/videos")
+      .then((r) => r.json())
+      .then((json) => {
+        if (json.videos?.length) {
+          setVideos(json.videos);
+          setFeaturedId(json.videos[0].id); // mới nhất làm featured
+        } else {
+          setError("Không tải được danh sách video.");
+        }
+      })
+      .catch(() => setError("Lỗi kết nối."))
+      .finally(() => setLoading(false));
+  }, []);
 
-  const videos = [
-    {
-      id: 1,
-      title: "Cuộc viễn chinh số #1: Vùng đất sương mù",
-      views: "1.2k",
-      time: "2 ngày",
-      dur: "14:02",
-    },
-    {
-      id: 2,
-      title: "Cuộc viễn chinh số #2: Thung lũng bóng tối",
-      views: "980",
-      time: "4 ngày",
-      dur: "18:37",
-    },
-    {
-      id: 3,
-      title: "Cuộc viễn chinh số #3: Ngọn tháp cô đơn",
-      views: "2.1k",
-      time: "6 ngày",
-      dur: "22:11",
-    },
-    {
-      id: 4,
-      title: "Cuộc viễn chinh số #4: Biển lửa vĩnh cửu",
-      views: "750",
-      time: "1 tuần",
-      dur: "11:55",
-    },
-  ];
+  // ── Đóng modal ─────────────────────────────────────────────────────────────
+  const closeModal = useCallback(() => setActiveId(null), []);
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") closeModal();
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [closeModal]);
+
+  // ── Dữ liệu derived ────────────────────────────────────────────────────────
+  const featured = videos.find((v) => v.id === featuredId) ?? videos[0] ?? null;
+
+  const filtered = videos.filter((v) => {
+    if (selectedCat === "all") return true;
+    if (selectedCat === "short") return v.isShort;
+    return !v.isShort; // "video"
+  });
+
+  const countShorts = videos.filter((v) => v.isShort).length;
+  const countVideos = videos.filter((v) => !v.isShort).length;
 
   return (
-    <div
-      className="space-y-6 animate-in fade-in zoom-in-95 duration-500"
-      
-    >
-      {/* ── 1. Main screen ────────────────────────────────────────────── */}
+    <div className="space-y-6 animate-in fade-in zoom-in-95 duration-500">
+      {/* ── 1. Main screen ──────────────────────────────────────────────── */}
       <div
-        className="relative aspect-video w-full overflow-hidden group"
+        className="relative aspect-video w-full overflow-hidden group cursor-pointer"
         style={{
           background: "#0c0804",
           border: "1px solid #6b4c1e",
           borderRadius: "2px",
           boxShadow: "0 0 0 1px #2a1a08, 0 0 40px rgba(180,120,40,0.2)",
         }}
+        onClick={() => featured && setActiveId(featured.id)}
       >
         {/* Gold bar top */}
         <div
@@ -100,12 +130,22 @@ export const CinemaContent = ({ data }: { data: Building }) => {
           </span>
         ))}
 
-        <Image
-          src={data.imageSrc || ""}
-          alt="Magic Mirror"
-          fill
-          className="object-cover opacity-30 group-hover:scale-105 transition-transform duration-[3s] ease-out"
-        />
+        {/* Thumbnail — dùng ảnh thật nếu có, fallback về data.imageSrc */}
+        {featured?.thumbnail ? (
+          <Image
+            src={featured.thumbnail}
+            alt={featured.title}
+            fill
+            className="object-cover opacity-40 group-hover:opacity-60 group-hover:scale-105 transition-all duration-[3s] ease-out"
+          />
+        ) : (
+          <Image
+            src={data.imageSrc || ""}
+            alt="Magic Mirror"
+            fill
+            className="object-cover opacity-30 group-hover:scale-105 transition-transform duration-[3s] ease-out"
+          />
+        )}
 
         {/* Vignette */}
         <div
@@ -119,7 +159,6 @@ export const CinemaContent = ({ data }: { data: Building }) => {
         {/* Play button */}
         <div className="absolute inset-0 flex items-center justify-center">
           <div className="relative group/btn">
-            {/* Glow ring */}
             <div
               className="absolute -inset-4 rounded-full opacity-0 group-hover/btn:opacity-100 transition-all duration-300"
               style={{
@@ -148,10 +187,17 @@ export const CinemaContent = ({ data }: { data: Building }) => {
                   "#8b6530";
               }}
             >
-              <Play
-                className="w-8 h-8 ml-1"
-                style={{ color: "#c8a040", fill: "#c8a040" }}
-              />
+              {loading ? (
+                <Loader2
+                  className="w-8 h-8 animate-spin"
+                  style={{ color: "#c8a040" }}
+                />
+              ) : (
+                <Play
+                  className="w-8 h-8 ml-1"
+                  style={{ color: "#c8a040", fill: "#c8a040" }}
+                />
+              )}
             </button>
           </div>
         </div>
@@ -177,7 +223,7 @@ export const CinemaContent = ({ data }: { data: Building }) => {
             </div>
             <span
               className="text-[9px] uppercase tracking-[0.2em]"
-              style={{color: "#c06050" }}
+              style={{ color: "#c06050" }}
             >
               Hào quang hiện hữu
             </span>
@@ -185,39 +231,44 @@ export const CinemaContent = ({ data }: { data: Building }) => {
           <h3
             className="text-sm sm:text-xl truncate leading-tight"
             style={{
-              
               color: "#e8c97a",
               textShadow: "0 0 20px rgba(232,200,120,0.3)",
             }}
           >
-            Chương I: Sự trỗi dậy của Pixel Vương Quốc
+            {loading
+              ? "Đang triệu hồi hồi ký..."
+              : (featured?.title ?? "Chưa có video")}
           </h3>
         </div>
       </div>
 
-      {/* ── 2. Category tabs ──────────────────────────────────────────── */}
+      {/* ── 2. Category tabs ────────────────────────────────────────────── */}
       <div
         className="flex gap-2 overflow-x-auto pb-1"
         style={{ scrollbarWidth: "none" }}
       >
-        {categories.map((cat) => {
+        {CATEGORIES.map((cat) => {
           const Icon = cat.icon;
           const active = selectedCat === cat.id;
+          const count =
+            cat.id === "short"
+              ? countShorts
+              : cat.id === "video"
+                ? countVideos
+                : null;
+
           return (
             <button
               key={cat.id}
               onClick={() => setSelectedCat(cat.id)}
               className="flex-shrink-0 flex items-center gap-2 px-4 py-2 transition-all duration-300"
               style={{
-                
                 fontSize: "10px",
                 letterSpacing: "0.15em",
                 textTransform: "uppercase",
                 borderRadius: "2px",
                 border: active ? `1px solid ${cat.color}` : "1px solid #3a2810",
-                background: active
-                  ? `rgba(${cat.color === "#c8a040" ? "140,100,30" : cat.color === "#7aaad4" ? "80,140,200" : cat.color === "#60c090" ? "60,160,100" : "160,60,50"},0.15)`
-                  : "rgba(0,0,0,0.25)",
+                background: active ? `${cat.color}22` : "rgba(0,0,0,0.25)",
                 color: active ? cat.color : "#5a4020",
                 boxShadow: active ? `0 0 14px ${cat.color}30` : "none",
                 transform: active ? "translateY(-1px)" : "none",
@@ -228,121 +279,267 @@ export const CinemaContent = ({ data }: { data: Building }) => {
                 style={{ color: active ? cat.color : "#4a3410" }}
               />
               {cat.label}
+              {!loading && count !== null && (
+                <span style={{ opacity: 0.5, fontSize: "8px" }}>({count})</span>
+              )}
             </button>
           );
         })}
       </div>
 
-      {/* ── 3. Video grid ─────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {videos.map((v) => (
-          <div
-            key={v.id}
-            className="group transition-all duration-300 cursor-pointer"
-            style={{
-              background: "linear-gradient(160deg, #251a0a, #1a1005)",
-              border: "1px solid #3a2810",
-              borderRadius: "2px",
-              padding: "12px",
-            }}
-            onMouseEnter={(e) => {
-              const el = e.currentTarget as HTMLDivElement;
-              el.style.borderColor = "#6b4c1e";
-              el.style.transform = "translateY(-2px)";
-              el.style.boxShadow = "0 0 20px rgba(180,120,40,0.15)";
-            }}
-            onMouseLeave={(e) => {
-              const el = e.currentTarget as HTMLDivElement;
-              el.style.borderColor = "#3a2810";
-              el.style.transform = "none";
-              el.style.boxShadow = "none";
-            }}
-          >
-            {/* Thumbnail placeholder */}
+      {/* ── 3. Video grid ───────────────────────────────────────────────── */}
+      {error ? (
+        <div className="text-center py-8 text-[#6b4c1e] text-xs italic">
+          {error}
+        </div>
+      ) : loading ? (
+        /* Skeleton */
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {Array.from({ length: 4 }).map((_, i) => (
             <div
-              className="relative w-full overflow-hidden"
+              key={i}
+              className="animate-pulse"
               style={{
-                aspectRatio: "16/9",
-                background: "linear-gradient(160deg, #1a1005, #0c0804)",
-                border: "1px solid #2a1a08",
-                borderRadius: "1px",
+                background: "linear-gradient(160deg, #251a0a, #1a1005)",
+                border: "1px solid #3a2810",
+                borderRadius: "2px",
+                padding: "12px",
               }}
             >
-              {/* Play icon watermark */}
-              <div className="absolute inset-0 flex items-center justify-center opacity-[0.06] group-hover:opacity-[0.15] transition-opacity duration-500">
-                <Play className="w-12 h-12" style={{ color: "#c8a040" }} />
-              </div>
-
-              {/* Candle glow */}
               <div
-                className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
                 style={{
-                  background:
-                    "radial-gradient(ellipse at 50% 100%, rgba(200,160,60,0.07), transparent 70%)",
+                  aspectRatio: "16/9",
+                  background: "#2a1a08",
+                  borderRadius: "1px",
                 }}
               />
-
-              {/* Duration badge */}
-              <div
-                className="absolute top-2 right-2 px-2 py-0.5 text-[9px] tracking-widest uppercase"
-                style={{
-                  
-                  background: "rgba(10,6,2,0.8)",
-                  border: "1px solid #3a2810",
-                  borderRadius: "1px",
-                  color: "#8b6530",
-                }}
-              >
-                {v.dur}
+              <div className="mt-3 space-y-2 px-1">
+                <div
+                  style={{
+                    height: 12,
+                    background: "#2a1a08",
+                    borderRadius: 2,
+                    width: "80%",
+                  }}
+                />
+                <div
+                  style={{
+                    height: 10,
+                    background: "#2a1a08",
+                    borderRadius: 2,
+                    width: "50%",
+                  }}
+                />
               </div>
             </div>
-
-            {/* Info */}
-            <div className="mt-3 space-y-2 px-1">
-              <h4
-                className="text-xs line-clamp-1 transition-colors duration-300"
+          ))}
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="text-center py-8 text-[#6b4c1e] text-xs italic flex flex-col items-center gap-2">
+          <Flame className="w-6 h-6 opacity-30" />
+          Chưa có hồi ký nào trong mục này.
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {filtered.map((v) => {
+            const isFeatured = featuredId === v.id;
+            return (
+              <div
+                key={v.id}
+                className="group transition-all duration-300 cursor-pointer"
                 style={{
-                  
-                  color: "#c8a870",
-                  letterSpacing: "0.03em",
+                  background: "linear-gradient(160deg, #251a0a, #1a1005)",
+                  border: `1px solid ${isFeatured ? "#6b4c1e" : "#3a2810"}`,
+                  borderRadius: "2px",
+                  padding: "12px",
+                }}
+                onClick={() => {
+                  setFeaturedId(v.id);
+                  setActiveId(v.id);
+                }}
+                onMouseEnter={(e) => {
+                  const el = e.currentTarget as HTMLDivElement;
+                  el.style.borderColor = "#6b4c1e";
+                  el.style.transform = "translateY(-2px)";
+                  el.style.boxShadow = "0 0 20px rgba(180,120,40,0.15)";
+                }}
+                onMouseLeave={(e) => {
+                  const el = e.currentTarget as HTMLDivElement;
+                  el.style.borderColor = isFeatured ? "#6b4c1e" : "#3a2810";
+                  el.style.transform = "none";
+                  el.style.boxShadow = "none";
                 }}
               >
-                {v.title}
-              </h4>
-
-              <div className="flex justify-between items-center">
+                {/* Thumbnail */}
                 <div
-                  className="flex items-center gap-3 text-[10px]"
-                  style={{ color: "#4a3410" }}
-                >
-                  <span className="flex items-center gap-1">
-                    <Eye className="w-3 h-3" style={{ color: "#6b4c1e" }} />
-                    {v.views}
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <Clock className="w-3 h-3" style={{ color: "#6b4c1e" }} />
-                    {v.time}
-                  </span>
-                </div>
-
-                {/* Arrow button */}
-                <div
-                  className="w-6 h-6 flex items-center justify-center transition-all duration-300"
+                  className="relative w-full overflow-hidden"
                   style={{
-                    border: "1px solid #3a2810",
-                    borderRadius: "50%",
+                    aspectRatio: "16/9",
+                    background: "linear-gradient(160deg, #1a1005, #0c0804)",
+                    border: "1px solid #2a1a08",
+                    borderRadius: "1px",
                   }}
                 >
-                  <ChevronRight
-                    className="w-3 h-3"
-                    style={{ color: "#4a3410" }}
-                  />
+                  {v.thumbnail && (
+                    <Image
+                      src={v.thumbnail}
+                      alt={v.title}
+                      fill
+                      className="object-cover opacity-70 group-hover:opacity-90 transition-opacity duration-300"
+                    />
+                  )}
+
+                  {/* Shorts badge */}
+                  {v.isShort && (
+                    <div
+                      className="absolute top-2 left-2 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider"
+                      style={{
+                        background: "#c06050",
+                        color: "#fff",
+                        borderRadius: "2px",
+                      }}
+                    >
+                      #Shorts
+                    </div>
+                  )}
+
+                  {/* Duration badge */}
+                  <div
+                    className="absolute bottom-2 right-2 px-2 py-0.5 text-[9px] tracking-widest uppercase"
+                    style={{
+                      background: "rgba(10,6,2,0.85)",
+                      border: "1px solid #3a2810",
+                      borderRadius: "1px",
+                      color: "#8b6530",
+                    }}
+                  >
+                    {v.duration}
+                  </div>
+
+                  {/* Play overlay on hover */}
+                  <div
+                    className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                    style={{ background: "rgba(0,0,0,0.3)" }}
+                  >
+                    <Play
+                      className="w-10 h-10"
+                      style={{
+                        color: "#c8a040",
+                        fill: "#c8a040",
+                        filter: "drop-shadow(0 0 8px rgba(200,160,60,0.6))",
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* Info */}
+                <div className="mt-3 space-y-2 px-1">
+                  <h4
+                    className="text-xs line-clamp-2 transition-colors duration-300"
+                    style={{
+                      color: "#c8a870",
+                      letterSpacing: "0.03em",
+                      lineHeight: "1.5",
+                    }}
+                  >
+                    {v.title}
+                  </h4>
+                  <div className="flex justify-between items-center">
+                    <div
+                      className="flex items-center gap-3 text-[10px]"
+                      style={{ color: "#4a3410" }}
+                    >
+                      <span className="flex items-center gap-1">
+                        <Eye className="w-3 h-3" style={{ color: "#6b4c1e" }} />
+                        {v.views}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Clock
+                          className="w-3 h-3"
+                          style={{ color: "#6b4c1e" }}
+                        />
+                        {relativeTime(v.publishedAt)}
+                      </span>
+                    </div>
+                    <div
+                      className="w-6 h-6 flex items-center justify-center transition-all duration-300 group-hover:border-amber-700"
+                      style={{
+                        border: "1px solid #3a2810",
+                        borderRadius: "50%",
+                      }}
+                    >
+                      <ChevronRight
+                        className="w-3 h-3"
+                        style={{ color: "#4a3410" }}
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* ── 4. Video modal (YouTube embed) ─────────────────────────────── */}
+      {activeId && (
+        <div
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-4 animate-in fade-in duration-200"
+          style={{
+            background: "rgba(0,0,0,0.85)",
+            backdropFilter: "blur(4px)",
+          }}
+          onClick={closeModal}
+        >
+          <div
+            className="relative w-full max-w-3xl animate-in zoom-in-95 duration-300"
+            style={{
+              background: "#0c0804",
+              border: "1px solid #6b4c1e",
+              boxShadow: "0 0 60px rgba(180,120,40,0.2)",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Gold top bar */}
+            <div
+              style={{
+                height: 2,
+                background:
+                  "linear-gradient(90deg, transparent, #5a3e14 10%, #c8a040 30%, #f0d882 50%, #c8a040 70%, #5a3e14 90%, transparent)",
+              }}
+            />
+
+            {/* Close button */}
+            <button
+              className="absolute top-2.5 right-0.5 z-10 w-8 h-8 flex items-center justify-center transition-all duration-200 cursor-pointer"
+              style={{ color: "white", scale: "1.8" }}
+              onClick={closeModal}
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            {/* iframe embed — key={activeId} đảm bảo reload khi đổi video */}
+            <div style={{ aspectRatio: "16/9" }}>
+              <iframe
+                key={activeId}
+                src={`https://www.youtube.com/embed/${activeId}?autoplay=1&rel=0&modestbranding=1`}
+                title="YouTube video"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+                className="w-full h-full"
+                style={{ display: "block" }}
+              />
+            </div>
+
+            {/* Title dưới player */}
+            <div className="px-4 py-3">
+              <p className="text-xs truncate" style={{ color: "#8b6530" }}>
+                {videos.find((v) => v.id === activeId)?.title}
+              </p>
             </div>
           </div>
-        ))}
-      </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -3,8 +3,8 @@ import "./globals.css";
 import { MedievalSharp } from "next/font/google";
 
 export const metadata: Metadata = {
-  title: "8bit Kingdom — Thế giới trái cây",
-  description: "Cộng đồng thế giới trái cây 8bit Kingdom",
+  title: "Kingdom 8bit — Thế giới bơ",
+  description: "Cộng đồng thế giới bơ  Kingdom 8bit",
 };
 const fantasyBody = MedievalSharp({ weight: "400", subsets: ["latin"] });
 
