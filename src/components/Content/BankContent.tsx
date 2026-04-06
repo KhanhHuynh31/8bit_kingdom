@@ -46,7 +46,7 @@ export const BankContent = ({ data }: { data: Building }) => {
   const [showQrModal, setShowQrModal] = useState(false);
 
   // 3. HẰNG SỐ
-  const youtubeChannelUrl = "https://youtube.com/@CuBoVTuber";
+  const youtubeChannelUrl = "https://youtube.com/@pu8bit";
   const CONVERSION = {
     SUB: 100,
     VIEW: 1,
@@ -258,7 +258,7 @@ export const BankContent = ({ data }: { data: Building }) => {
               Mở mã QR Quyên Góp
             </div>
             <div className="text-[10px] text-amber-700 uppercase mt-2 tracking-tighter">
-              Hỗ trợ Momo / Ngân hàng Việt Nam
+              Banking
             </div>
           </button>
         </div>
