@@ -110,7 +110,7 @@ export default function InfoModal() {
         </div>
 
         {/* Body content */}
-        <div className="fantasy-scroll h-full px-10 pt-5 pb-6 overflow-y-auto max-h-[78%] text-[#c8a870]">
+        <div className="fantasy-scroll h-full px-10 pt-5 pb-6 overflow-y-auto max-h-[82%] text-[#c8a870]">
           {renderContent()}
         </div>
       </div>
