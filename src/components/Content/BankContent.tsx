@@ -25,7 +25,6 @@ import {
   Coffee,
 } from "lucide-react";
 import Image from "next/image";
-import codePic from "../../../public/assets/code.jpg"; // Đường dẫn ảnh
 // ── DATA TYPES & INTERFACE ──────────────────────────────────────
 interface Transaction {
   user: string;
@@ -361,7 +360,7 @@ export const BankContent = ({ data }: { data: Building }) => {
 
               <div className="aspect-square w-full bg-white rounded-xl p-3 shadow-inner flex items-center justify-center group overflow-hidden">
                 <Image
-                  src={codePic} // Đường dẫn ảnh
+                  src="/assets/donate-qr.png" // Đường dẫn ảnh
                   alt="Mô tả ảnh cho SEO và hỗ trợ người dùng"
                   width={500} // Chiều rộng (bắt buộc nếu không dùng fill)
                   height={300} // Chiều cao (bắt buộc nếu không dùng fill)
