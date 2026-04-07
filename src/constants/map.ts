@@ -132,6 +132,7 @@ const MAIN_BUILDINGS: Building[] = [
     imageSrc: "/assets/buildings/news.png",
     interactive: true,
   },
+ 
 ];
 
 // --- TỔNG HỢP TẤT CẢ ---

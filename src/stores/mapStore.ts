@@ -24,10 +24,17 @@ interface MapState {
   selectedBuilding: Building | null;
   avocados: number;
   ytStats: YtStats;
-  isLoading: boolean; // Trạng thái để hiện loading UI và chặn trùng lặp request
+  isLoading: boolean;
   lastHarvestTime: Record<string, number>;
   unlockedMemories: number[];
   latestNews: News | null;
+
+  // Trạng thái runtime của tuna (không persist)
+  tunaVisible: boolean;
+  tunaAnimOffsetY: number; // world-unit offset hiện tại (dương = thấp hơn vị trí thật)
+  tunaAnimating: boolean;
+  tunaDiving: boolean;    // đang lặn xuống (reverse animation)
+  tunaInfoOpen: boolean; // đang hiển thị description của tuna
 
   // ── Actions ──────────────────────────────────────────────────────────
   fetchYtStats: (force?: boolean) => Promise<void>;
@@ -39,6 +46,11 @@ interface MapState {
   harvest: (buildingId: string) => void;
   addAvocados: (amount: number) => void;
   setLatestNews: (news: News) => void;
+
+  // Tuna actions
+  animateTuna: () => void; // trồi lên (pool click khi tuna ẩn)
+  sinkTuna: () => void;   // lặn xuống (pool click khi tuna visible)
+  toggleTunaInfo: () => void; // mở/đóng description (tuna click)
 }
 
 // Giá trị mặc định
@@ -53,6 +65,10 @@ const DEFAULT_YT_STATS: YtStats = {
 };
 export const YOUTUBE_CHANNEL_ID = "UCXA1PWUJIHV_PDStz7ksAUg";
 
+// ── Hằng số animation tuna ─────────────────────────────────────────────────
+const TUNA_ANIM_DURATION = 800; // ms
+const TUNA_FLOAT_OFFSET = 3;   // world units — tuna xuất hiện từ phía dưới
+
 export const useMapStore = create<MapState>()(
   persist(
     (set, get) => ({
@@ -66,27 +82,25 @@ export const useMapStore = create<MapState>()(
       lastHarvestTime: {},
       latestNews: null,
 
+      // Tuna (runtime, không persist)
+      tunaVisible: false,
+      tunaAnimOffsetY: TUNA_FLOAT_OFFSET,
+      tunaAnimating: false,
+      tunaDiving: false,
+      tunaInfoOpen: false,
+
       // ── Logic Xử lý Actions ──────────────────────────────────────────────
 
       fetchYtStats: async (force = false) => {
         const { ytStats, isLoading } = get();
-
-        // Kiểm tra thời gian: 60 phút (3600000 ms)
         const isExpired = Date.now() - ytStats.lastUpdated > 3600000;
-
-        // ĐIỀU KIỆN CHẠY API:
-        // 1. Được gọi ép buộc (force = true)
-        // 2. HOẶC Dữ liệu hiện tại đang là 0 (chưa có data)
-        // 3. HOẶC Dữ liệu đã cũ (quá 60 phút)
         const shouldFetch = force || ytStats.subscribers === 0 || isExpired;
-
         if (!shouldFetch || isLoading) return;
 
         set({ isLoading: true });
         try {
           const res = await fetch("/api/youtube");
           const json = await res.json();
-
           if (json.subscribers !== undefined) {
             set({
               ytStats: {
@@ -163,21 +177,80 @@ export const useMapStore = create<MapState>()(
         });
         return true;
       },
+
+      // ── Tuna: trồi lên ──────────────────────────────────────────────────
+      // Gọi khi click pool và tuna đang ẩn. Bỏ qua nếu đang giữa animation.
+      animateTuna: () => {
+        const { tunaVisible, tunaAnimating, tunaDiving } = get();
+        if (tunaVisible || tunaAnimating || tunaDiving) return;
+
+        set({ tunaAnimating: true, tunaAnimOffsetY: TUNA_FLOAT_OFFSET, tunaInfoOpen: false });
+
+        const start = performance.now();
+        const tick = () => {
+          const elapsed = performance.now() - start;
+          const progress = Math.min(elapsed / TUNA_ANIM_DURATION, 1);
+          // Ease-out cubic
+          const eased = 1 - Math.pow(1 - progress, 3);
+          set({ tunaAnimOffsetY: TUNA_FLOAT_OFFSET * (1 - eased) });
+
+          if (progress < 1) {
+            requestAnimationFrame(tick);
+          } else {
+            set({ tunaVisible: true, tunaAnimating: false, tunaAnimOffsetY: 0 });
+          }
+        };
+        requestAnimationFrame(tick);
+      },
+
+      // ── Tuna: lặn xuống (reverse) ────────────────────────────────────────
+      // Gọi khi click pool và tuna đang visible. Đảo ngược animation trồi lên.
+      sinkTuna: () => {
+        const { tunaVisible, tunaAnimating, tunaDiving } = get();
+        if (!tunaVisible || tunaAnimating || tunaDiving) return;
+
+        // Ẩn info bubble ngay khi bắt đầu lặn
+        set({ tunaDiving: true, tunaVisible: false, tunaAnimOffsetY: 0, tunaInfoOpen: false });
+
+        const start = performance.now();
+        const tick = () => {
+          const elapsed = performance.now() - start;
+          const progress = Math.min(elapsed / TUNA_ANIM_DURATION, 1);
+          // Ease-in cubic: chậm lúc đầu, nhanh dần khi chìm
+          const eased = Math.pow(progress, 3);
+          set({ tunaAnimOffsetY: TUNA_FLOAT_OFFSET * eased });
+
+          if (progress < 1) {
+            requestAnimationFrame(tick);
+          } else {
+            // Tuna đã chìm hoàn toàn — reset về trạng thái ban đầu
+            set({ tunaDiving: false, tunaAnimOffsetY: TUNA_FLOAT_OFFSET });
+          }
+        };
+        requestAnimationFrame(tick);
+      },
+
+      // ── Toggle tuna info ─────────────────────────────────────────────────
+      toggleTunaInfo: () => {
+        const { tunaVisible, tunaInfoOpen } = get();
+        if (!tunaVisible) return;
+        set({ tunaInfoOpen: !tunaInfoOpen });
+      },
     }),
     {
       name: "map-storage",
-      // Chỉ lưu trữ những dữ liệu cần thiết qua các phiên làm việc
       partialize: (state) => ({
         avocados: state.avocados,
         lastHarvestTime: state.lastHarvestTime,
         unlockedMemories: state.unlockedMemories,
-        ytStats: state.ytStats, // Lưu lại để lần sau mở web có data ngay
+        ytStats: state.ytStats,
+        // tunaVisible KHÔNG persist — tuna luôn ẩn khi reload trang
       }),
     },
   ),
 );
 
-// ─── Selector Helpers (Tối ưu render cho Next.js 16) ─────────────────────────
+// ─── Selector Helpers ─────────────────────────────────────────────────────────
 
 export const selectCamera = (s: MapState) => s.camera;
 export const selectAvocados = (s: MapState) => s.avocados;
@@ -186,15 +259,19 @@ export const selectYtStats = (s: MapState) => s.ytStats;
 export const selectIsLoading = (s: MapState) => s.isLoading;
 export const selectLatestNews = (s: MapState) => s.latestNews;
 
-// Computed State (Số liệu phái sinh - không cần lưu trữ trực tiếp)
-export const selectTotalEnergy = (s: MapState) =>
-  s.ytStats.subscribers * 100 + // 1 Sub     = 100 Sét
-  s.ytStats.views * 1 + // 1 View    = 1 Sét
-  s.ytStats.totalLikes * 50 + // 1 Like    = 50 Sét
-  s.ytStats.totalComments * 10; // 1 Comment = 10 Sét
+// Tuna selectors
+export const selectTunaVisible = (s: MapState) => s.tunaVisible;
+export const selectTunaAnimOffsetY = (s: MapState) => s.tunaAnimOffsetY;
+export const selectTunaAnimating = (s: MapState) => s.tunaAnimating;
+export const selectTunaDiving = (s: MapState) => s.tunaDiving;
+export const selectTunaInfoOpen = (s: MapState) => s.tunaInfoOpen;
 
-// Chú ý: Khi dùng Actions trong Component, nên lấy lẻ từng hàm
-// hoặc dùng useShallow để tránh lỗi "getSnapshot" infinite loop.
+export const selectTotalEnergy = (s: MapState) =>
+  s.ytStats.subscribers * 100 +
+  s.ytStats.views * 1 +
+  s.ytStats.totalLikes * 50 +
+  s.ytStats.totalComments * 10;
+
 export const selectActions = (s: MapState) => ({
   setCamera: s.setCamera,
   updateOffset: s.updateOffset,
@@ -205,4 +282,7 @@ export const selectActions = (s: MapState) => ({
   setLatestNews: s.setLatestNews,
   unlockMemory: s.unlockMemory,
   fetchYtStats: s.fetchYtStats,
+  animateTuna: s.animateTuna,
+  sinkTuna: s.sinkTuna,
+  toggleTunaInfo: s.toggleTunaInfo,
 });

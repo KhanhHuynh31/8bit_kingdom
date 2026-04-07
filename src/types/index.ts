@@ -12,6 +12,7 @@ export interface Building {
   height: number; // số tile chiều dọc
   type: "main" | "secondary" | "decoration" | "torch";
   animationType?: string;
+  zIndex?: number; // ưu tiên vẽ trước (nhỏ hơn) hay sau (lớn hơn) khi cùng loại
   imageSrc: string;
   interactive: boolean;
   clickedAt?: number; // timestamp mỗi lần click, tạo unique key

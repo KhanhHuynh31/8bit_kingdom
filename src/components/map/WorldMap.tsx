@@ -4,7 +4,7 @@ import { useRef, useEffect, useCallback, useState, useMemo } from "react";
 import { useMapStore } from "@/stores/mapStore";
 import { useMapDrag } from "@/hooks/useMapDrag";
 import { useBuildings } from "@/hooks/useBuildings";
-import { renderMap } from "./MapRenderer";
+import { renderMap, TunaRenderState } from "./MapRenderer";
 import { screenToWorld } from "@/utils/coords";
 import { MIN_ZOOM, MAX_ZOOM } from "@/constants/map";
 
@@ -17,7 +17,7 @@ import dynamic from "next/dynamic";
 import { Building } from "@/types";
 
 // ─── Spatial Grid ──────────────────────────────────────────────────────────
-const CELL_SIZE = 200; // world units per grid cell
+const CELL_SIZE = 200;
 
 interface GridCell {
   ids: string[];
@@ -27,7 +27,6 @@ function buildSpatialGrid(buildings: Building[]): Map<string, GridCell> {
   const grid = new Map<string, GridCell>();
   for (const b of buildings) {
     if (!b.interactive) continue;
-    // A building may span multiple cells
     const x0 = Math.floor(b.worldX / CELL_SIZE);
     const x1 = Math.floor((b.worldX + b.width) / CELL_SIZE);
     const y0 = Math.floor(b.worldY / CELL_SIZE);
@@ -43,24 +42,44 @@ function buildSpatialGrid(buildings: Building[]): Map<string, GridCell> {
   return grid;
 }
 
+// ── hitTest: trả về building có zIndex cao nhất tại điểm click ─────────────
+// Hỗ trợ nhiều vật thể chồng nhau — vật thể z cao hơn luôn được ưu tiên.
+// hiddenIds: tập ID các building hiện đang bị ẩn (không thể click).
 function hitTest(
   wx: number,
   wy: number,
   grid: Map<string, GridCell>,
   buildingMap: Map<string, Building>,
+  hiddenIds: Set<string>,
 ): string | null {
   const cx = Math.floor(wx / CELL_SIZE);
   const cy = Math.floor(wy / CELL_SIZE);
   const cell = grid.get(`${cx}:${cy}`);
   if (!cell) return null;
+
+  let best: Building | null = null;
+
   for (const id of cell.ids) {
+    // Bỏ qua building đang ẩn
+    if (hiddenIds.has(id)) continue;
+
     const b = buildingMap.get(id);
-    if (b && wx >= b.worldX && wx <= b.worldX + b.width &&
-        wy >= b.worldY && wy <= b.worldY + b.height) {
-      return id;
+    if (!b) continue;
+
+    if (
+      wx >= b.worldX &&
+      wx <= b.worldX + b.width &&
+      wy >= b.worldY &&
+      wy <= b.worldY + b.height
+    ) {
+      // Chọn building có zIndex cao nhất (mặc định 0 nếu không có)
+      if (!best || (b.zIndex ?? 0) > (best.zIndex ?? 0)) {
+        best = b;
+      }
     }
   }
-  return null;
+
+  return best?.id ?? null;
 }
 // ───────────────────────────────────────────────────────────────────────────
 
@@ -96,33 +115,82 @@ export default function WorldMap({
   const hoveredIdRef = useRef<string | null>(null);
   const dimensionsRef = useRef({ width: 0, height: 0 });
 
-  // Chỉ dùng state cho những thứ cần trigger re-render UI
+  // Tuna state refs — đọc bởi RAF loop không qua re-render
+  const tunaVisibleRef = useRef(false);
+  const tunaAnimOffsetYRef = useRef(0);
+  const tunaAnimatingRef = useRef(false);
+  const tunaDivingRef = useRef(false);
+
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
 
-  const { setZoom } = useMapStore();
-  const { onPointerDown, onPointerMove: onDragMove, onPointerUp } = useMapDrag(canvasRef);
-const { buildings, handleClick: handleBuildingClick } = useBuildings();
+  const setZoom = useMapStore((s) => s.setZoom);
+  const animateTuna = useMapStore((s) => s.animateTuna);
+  const sinkTuna = useMapStore((s) => s.sinkTuna);
+  const toggleTunaInfo = useMapStore((s) => s.toggleTunaInfo);
 
-  // ── Đồng bộ refs với props/state mới nhất ───────────────────────
-  useEffect(() => { statusRef.current = status; }, [status]);
-  useEffect(() => { weatherRef.current = weather; }, [weather]);
+  const {
+    onPointerDown,
+    onPointerMove: onDragMove,
+    onPointerUp,
+  } = useMapDrag(canvasRef);
+  const { buildings, handleClick: handleBuildingClick } = useBuildings();
 
-  // Subscribe trực tiếp vào store để cập nhật cameraRef mà không re-render
+  // ── Đồng bộ refs với props ───────────────────────────────────────
+  useEffect(() => {
+    statusRef.current = status;
+  }, [status]);
+  useEffect(() => {
+    weatherRef.current = weather;
+  }, [weather]);
+
+  // Subscribe camera — không re-render
   useEffect(() => {
     return useMapStore.subscribe((state) => {
       cameraRef.current = state.camera;
     });
   }, []);
 
-  // ── Spatial index: precompute khi buildings thay đổi ────────────
+  // Subscribe tuna state — cập nhật refs để RAF loop đọc
+  useEffect(() => {
+    return useMapStore.subscribe((state) => {
+      tunaVisibleRef.current = state.tunaVisible;
+      tunaAnimOffsetYRef.current = state.tunaAnimOffsetY;
+      tunaAnimatingRef.current = state.tunaAnimating;
+      tunaDivingRef.current = state.tunaDiving;
+    });
+  }, []);
+
+  // ── Spatial index ────────────────────────────────────────────────
   const { spatialGrid, buildingMap } = useMemo(() => {
     const buildingMap = new Map(buildings.map((b) => [b.id, b]));
     const spatialGrid = buildSpatialGrid(buildings);
     return { spatialGrid, buildingMap };
   }, [buildings]);
 
-  // ── 1. Hover với O(1) hit-test ──────────────────────────────────
+  // ── hiddenIds ref: hitTest đọc qua ref, không trigger re-render ──
+  // Khởi tạo đồng bộ từ getState() tránh snapshot loop
+  // Replace lines 165-168 with this:
+  const hiddenIdsRef = useRef<Set<string>>(
+    (() => {
+      const s = useMapStore.getState();
+      return !s.tunaVisible || s.tunaDiving
+        ? new Set(["tuna"])
+        : new Set<string>();
+    })(), // Notice the () here to execute the function immediately
+  );
+  useEffect(() => {
+    return useMapStore.subscribe((state) => {
+      const next = new Set<string>();
+      // Ẩn khỏi hitTest khi chưa visible (kể cả lúc đang trồi lên)
+      // Chỉ cho phép click tuna sau khi animation trồi lên xong hoàn toàn
+      // Khi đang lặn (diving) thì cũng không cho click
+      if (!state.tunaVisible || state.tunaDiving) next.add("tuna");
+      hiddenIdsRef.current = next;
+    });
+  }, []);
+
+  // ── Hover với O(1) hit-test ──────────────────────────────────────
   const onMouseMove = useCallback(
     (e: React.MouseEvent<HTMLCanvasElement>) => {
       const canvas = canvasRef.current;
@@ -131,20 +199,26 @@ const { buildings, handleClick: handleBuildingClick } = useBuildings();
       const world = screenToWorld(
         e.clientX - rect.left,
         e.clientY - rect.top,
-        cameraRef.current,    // dùng ref, không tạo closure mới
+        cameraRef.current,
         rect.width / 2,
         rect.height / 2,
       );
-      const found = hitTest(world.x, world.y, spatialGrid, buildingMap);
+      const found = hitTest(
+        world.x,
+        world.y,
+        spatialGrid,
+        buildingMap,
+        hiddenIdsRef.current,
+      );
       if (found !== hoveredIdRef.current) {
         hoveredIdRef.current = found;
-        setHoveredId(found);  // chỉ trigger re-render khi thực sự đổi
+        setHoveredId(found);
       }
     },
-    [spatialGrid, buildingMap], // chỉ re-create khi buildings thay đổi
+    [spatialGrid, buildingMap],
   );
 
-  // ── 2. Resize: chỉ cập nhật canvas size, không liên quan RAF ───
+  // ── Resize ──────────────────────────────────────────────────────
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
@@ -163,16 +237,24 @@ const { buildings, handleClick: handleBuildingClick } = useBuildings();
     return () => observer.disconnect();
   }, []);
 
-  // ── 3. RAF loop: khởi động 1 lần duy nhất, đọc qua refs ────────
+  // ── RAF loop ────────────────────────────────────────────────────
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext("2d", { alpha: false }); // alpha: false = nhanh hơn
+    const ctx = canvas.getContext("2d", { alpha: false });
     if (!ctx) return;
 
     const loop = () => {
       const { width, height } = dimensionsRef.current;
       if (width > 0 && height > 0) {
+        // Đọc tuna state từ refs — không cần re-render WorldMap
+        const tunaState: TunaRenderState = {
+          visible: tunaVisibleRef.current,
+          animating: tunaAnimatingRef.current,
+          animOffsetY: tunaAnimOffsetYRef.current,
+          diving: tunaDivingRef.current,
+        };
+
         renderMap(
           ctx,
           cameraRef.current,
@@ -181,6 +263,7 @@ const { buildings, handleClick: handleBuildingClick } = useBuildings();
           hoveredIdRef.current,
           statusRef.current,
           weatherRef.current,
+          tunaState,
         );
       }
       animRef.current = requestAnimationFrame(loop);
@@ -189,16 +272,19 @@ const { buildings, handleClick: handleBuildingClick } = useBuildings();
     return () => {
       if (animRef.current) cancelAnimationFrame(animRef.current);
     };
-  }, []); // deps rỗng = loop chạy mãi mãi, không bao giờ restart
+  }, []);
 
-  // ── 4. Wheel zoom ───────────────────────────────────────────────
+  // ── Wheel zoom ──────────────────────────────────────────────────
   const onWheel = useCallback(
     (e: WheelEvent) => {
       e.preventDefault();
       const delta = e.deltaY > 0 ? -0.1 : 0.1;
       const newZoom = Math.min(
         MAX_ZOOM,
-        Math.max(MIN_ZOOM, parseFloat((cameraRef.current.zoom + delta).toFixed(1))),
+        Math.max(
+          MIN_ZOOM,
+          parseFloat((cameraRef.current.zoom + delta).toFixed(1)),
+        ),
       );
       setZoom(newZoom);
     },
@@ -220,13 +306,60 @@ const { buildings, handleClick: handleBuildingClick } = useBuildings();
     [onDragMove, onMouseMove],
   );
 
-const handleCanvasClick = useCallback(
-  (e: React.MouseEvent<HTMLCanvasElement>) => {
-    const rect = canvasRef.current?.getBoundingClientRect();
-    if (rect) handleBuildingClick(e.clientX, e.clientY, cameraRef.current, rect);
-  },
-  [handleBuildingClick],
-);
+  // ── Click handler: pool → animateTuna, các building khác → handleBuildingClick
+  const handleCanvasClick = useCallback(
+    (e: React.MouseEvent<HTMLCanvasElement>) => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const rect = canvas.getBoundingClientRect();
+
+      const world = screenToWorld(
+        e.clientX - rect.left,
+        e.clientY - rect.top,
+        cameraRef.current,
+        rect.width / 2,
+        rect.height / 2,
+      );
+
+      // Tìm building được click (tôn trọng z-order và hidden)
+      const clickedId = hitTest(
+        world.x,
+        world.y,
+        spatialGrid,
+        buildingMap,
+        hiddenIdsRef.current,
+      );
+
+      if (clickedId === "pool") {
+        // Toggle tuna: nếu visible → lặn xuống, nếu ẩn → trồi lên
+        const { tunaVisible, tunaAnimating, tunaDiving } =
+          useMapStore.getState();
+        if (tunaVisible && !tunaAnimating && !tunaDiving) {
+          sinkTuna();
+        } else if (!tunaVisible && !tunaAnimating && !tunaDiving) {
+          animateTuna();
+        }
+        // Không gọi handleBuildingClick pool để tránh mở modal
+        return;
+      }
+
+      if (clickedId === "tuna") {
+        // Click tuna → toggle hiển thị description
+        toggleTunaInfo();
+        return;
+      }
+
+      handleBuildingClick(e.clientX, e.clientY, cameraRef.current, rect);
+    },
+    [
+      handleBuildingClick,
+      spatialGrid,
+      buildingMap,
+      animateTuna,
+      sinkTuna,
+      toggleTunaInfo,
+    ],
+  );
 
   return (
     <div

@@ -44,19 +44,36 @@ export const SECONDARY_BUILDINGS: Building[] = [
     imageSrc: "/assets/decorate/sale.png",
     interactive: true,
   },
+
   {
-    id: "sale3",
-    name: "Mặt tiền A3",
+    id: "pool",
+    name: "Bể bơi",
     description:
-      "Cây bơ thần kỳ tỏa bóng mát toàn khu vực, trái của nó cung cấp năng lượng vĩnh cửu cho cư dân.",
+      "Nơi thư giãn và tái tạo năng lượng cho các cư dân vương quốc.",
     worldX: -11,
-    worldY: -7,
-    width: 4,
-    height: 3,
+    worldY: -9,
+    width: 6,
+    height: 6,
+    zIndex: 0,
+
     type: "secondary",
-    animationType: "shake_on_click",
-    imageSrc: "/assets/decorate/sale.png",
+    imageSrc: "/assets/decorate/pool.png",
     interactive: true,
+  },
+  {
+    id: "tuna",
+    name: "Genji",
+    description:
+      "Sinh vật huyền thoại sống trong bể bơi, chỉ xuất hiện khi có sự kiện đặc biệt. Người ta đồn rằng tuna",
+    worldX: -9, // nằm trong pool (giữa pool theo X)
+    worldY: -7, // nằm trong pool (giữa pool theo Y)
+    width: 1,
+    height: 1,
+    interactive: true,
+    zIndex: 1, // cao hơn pool → được pick khi chồng
+    type: "main", // hoặc bất kỳ type nào phù hợp
+    imageSrc: "/assets/decorate/tuna.png",
+    // hidden: true -- KHÔNG đặt ở đây, handled bởi tunaVisible trong store
   },
 ];
 
