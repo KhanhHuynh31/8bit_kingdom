@@ -29,7 +29,7 @@ const NEWS_BUILDING = BUILDINGS.find((b) => b.id === "news") ?? null;
 const TUNA_BUILDING = BUILDINGS.find((b) => b.id === "tuna") ?? null;
 
 const TUNA_QUOTES_NORMAL = ["Chào đằng ấy! 🌊", "Tuna đang đói... 🥑", "Cá ngừ cũng biết buồn đó! 🐟"];
-const TUNA_QUOTES_EVOLVED = ["Sức mạnh thật dồi dào! 💪", "Vương quốc này thật tuyệt vời. ✨", "Tuna đã trưởng thành! 😎"];
+const TUNA_QUOTES_EVOLVED = ["Cái ao này thật nhỏ bé.", "Hãy donate để mở rộng ao!"];
 
 interface Popup {
   id: number;
@@ -198,7 +198,7 @@ export default function WorldOverlay({
         >
           <div className={`bg-[#0b1e2c]/95 backdrop-blur-md border-2 ${isEvolved ? 'border-yellow-400 shadow-[0_0_20px_rgba(250,204,21,0.3)]' : 'border-cyan-400/50'} rounded-2xl p-4 min-w-[200px]`}>
              <div className="flex justify-between items-center mb-2 border-b border-white/10 pb-2">
-                <span className="text-cyan-300 text-[10px] font-bold uppercase">{isEvolved ? "🐉 Tuna Đại Đế" : "🐟 Tuna Nhỏ"}</span>
+                <span className="text-cyan-300 text-[10px] font-bold uppercase">{isEvolved ? "Tuna Đại Đế" : "🐟 Tuna Nhỏ"}</span>
                 <span className="text-[10px] text-white/50">{isEvolved ? "MAX LEVEL" : `${tunaProgress}/1000`}</span>
              </div>
              

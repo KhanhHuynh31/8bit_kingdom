@@ -225,7 +225,7 @@ export function renderMap(
       // SỬA TẠI ĐÂY: Sử dụng đường dẫn Web chuẩn
       if (tunaState.isEvolved) {
         tunaInstance.imageSrc = "/assets/decorate/tuna_evolved.png"; 
-        tunaInstance.name = "Tuna Đại Đế 🐉";
+        tunaInstance.name = "Tuna Đại Đế";
       }
 
       entries.push({ 
