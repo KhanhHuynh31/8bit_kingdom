@@ -1,5 +1,3 @@
-"use client";
-
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { Camera, Building } from "@/types";
@@ -26,7 +24,7 @@ interface MapState {
   selectedBuilding: Building | null;
   avocados: number;
   ytStats: YtStats;
-  isLoading: boolean;
+  isLoading: boolean; // Trạng thái để hiện loading UI và chặn trùng lặp request
   lastHarvestTime: Record<string, number>;
   unlockedMemories: number[];
   latestNews: News | null;
@@ -102,14 +100,23 @@ export const useMapStore = create<MapState>()(
 
       fetchYtStats: async (force = false) => {
         const { ytStats, isLoading } = get();
+
+        // Kiểm tra thời gian: 60 phút (3600000 ms)
         const isExpired = Date.now() - ytStats.lastUpdated > 3600000;
+
+        // ĐIỀU KIỆN CHẠY API:
+        // 1. Được gọi ép buộc (force = true)
+        // 2. HOẶC Dữ liệu hiện tại đang là 0 (chưa có data)
+        // 3. HOẶC Dữ liệu đã cũ (quá 60 phút)
         const shouldFetch = force || ytStats.subscribers === 0 || isExpired;
+
         if (!shouldFetch || isLoading) return;
 
         set({ isLoading: true });
         try {
           const res = await fetch("/api/youtube");
           const json = await res.json();
+
           if (json.subscribers !== undefined) {
             set({
               ytStats: {
@@ -243,18 +250,19 @@ export const useMapStore = create<MapState>()(
     }),
     {
       name: "map-storage",
+      // Chỉ lưu trữ những dữ liệu cần thiết qua các phiên làm việc
       partialize: (state) => ({
         avocados: state.avocados,
         lastHarvestTime: state.lastHarvestTime,
         unlockedMemories: state.unlockedMemories,
-        ytStats: state.ytStats,
+        ytStats: state.ytStats, // Lưu lại để lần sau mở web có data ngay
         tunaProgress: state.tunaProgress, // Persist tiến trình tiến hóa
       }),
     },
-  ),
+  )
 );
 
-// ─── Selector Helpers ─────────────────────────────────────────────────────────
+// ─── Selector Helpers (Tối ưu render cho Next.js 16) ─────────────────────────
 
 export const selectCamera = (s: MapState) => s.camera;
 export const selectAvocados = (s: MapState) => s.avocados;
@@ -271,12 +279,15 @@ export const selectTunaAnimating = (s: MapState) => s.tunaAnimating;
 export const selectTunaDiving = (s: MapState) => s.tunaDiving;
 export const selectTunaInfoOpen = (s: MapState) => s.tunaInfoOpen;
 
+// Computed State (Số liệu phái sinh - không cần lưu trữ trực tiếp)
 export const selectTotalEnergy = (s: MapState) =>
-  s.ytStats.subscribers * 100 +
-  s.ytStats.views * 1 +
-  s.ytStats.totalLikes * 50 +
-  s.ytStats.totalComments * 10;
+  s.ytStats.subscribers * 100 + // 1 Sub    = 100 Sét
+  s.ytStats.views * 1 +         // 1 View   = 1 Sét
+  s.ytStats.totalLikes * 50 +   // 1 Like   = 50 Sét
+  s.ytStats.totalComments * 10; // 1 Comment = 10 Sét
 
+// Chú ý: Khi dùng Actions trong Component, nên lấy lẻ từng hàm
+// hoặc dùng useShallow để tránh lỗi "getSnapshot" infinite loop.
 export const selectActions = (s: MapState) => ({
   setCamera: s.setCamera,
   updateOffset: s.updateOffset,
