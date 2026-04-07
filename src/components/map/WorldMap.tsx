@@ -42,9 +42,6 @@ function buildSpatialGrid(buildings: Building[]): Map<string, GridCell> {
   return grid;
 }
 
-// ── hitTest: trả về building có zIndex cao nhất tại điểm click ─────────────
-// Hỗ trợ nhiều vật thể chồng nhau — vật thể z cao hơn luôn được ưu tiên.
-// hiddenIds: tập ID các building hiện đang bị ẩn (không thể click).
 function hitTest(
   wx: number,
   wy: number,
@@ -60,7 +57,6 @@ function hitTest(
   let best: Building | null = null;
 
   for (const id of cell.ids) {
-    // Bỏ qua building đang ẩn
     if (hiddenIds.has(id)) continue;
 
     const b = buildingMap.get(id);
@@ -72,7 +68,6 @@ function hitTest(
       wy >= b.worldY &&
       wy <= b.worldY + b.height
     ) {
-      // Chọn building có zIndex cao nhất (mặc định 0 nếu không có)
       if (!best || (b.zIndex ?? 0) > (best.zIndex ?? 0)) {
         best = b;
       }
@@ -81,7 +76,6 @@ function hitTest(
 
   return best?.id ?? null;
 }
-// ───────────────────────────────────────────────────────────────────────────
 
 interface WorldMapProps {
   status: TimeStatus;
@@ -92,7 +86,7 @@ interface WorldMapProps {
   setManualWeather: (val: WeatherType | null) => void;
 }
 
-const WorldOverlay = dynamic(() => import("./overplay/WorldOverplay"), {
+const WorldOverlay = dynamic(() => import("../map/overplay/WorldOverplay"), {
   ssr: false,
 });
 
@@ -115,11 +109,12 @@ export default function WorldMap({
   const hoveredIdRef = useRef<string | null>(null);
   const dimensionsRef = useRef({ width: 0, height: 0 });
 
-  // Tuna state refs — đọc bởi RAF loop không qua re-render
+  // Tuna state refs
   const tunaVisibleRef = useRef(false);
   const tunaAnimOffsetYRef = useRef(0);
   const tunaAnimatingRef = useRef(false);
   const tunaDivingRef = useRef(false);
+  const tunaProgressRef = useRef(0); // Dùng ref để tránh re-render mỗi khi progress đổi
 
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
@@ -144,7 +139,6 @@ export default function WorldMap({
     weatherRef.current = weather;
   }, [weather]);
 
-  // Subscribe camera — không re-render
   useEffect(() => {
     return useMapStore.subscribe((state) => {
       cameraRef.current = state.camera;
@@ -158,6 +152,7 @@ export default function WorldMap({
       tunaAnimOffsetYRef.current = state.tunaAnimOffsetY;
       tunaAnimatingRef.current = state.tunaAnimating;
       tunaDivingRef.current = state.tunaDiving;
+      tunaProgressRef.current = state.tunaProgress; // Sync progress để check tiến hóa
     });
   }, []);
 
@@ -168,23 +163,18 @@ export default function WorldMap({
     return { spatialGrid, buildingMap };
   }, [buildings]);
 
-  // ── hiddenIds ref: hitTest đọc qua ref, không trigger re-render ──
-  // Khởi tạo đồng bộ từ getState() tránh snapshot loop
-  // Replace lines 165-168 with this:
   const hiddenIdsRef = useRef<Set<string>>(
     (() => {
       const s = useMapStore.getState();
       return !s.tunaVisible || s.tunaDiving
         ? new Set(["tuna"])
         : new Set<string>();
-    })(), // Notice the () here to execute the function immediately
+    })(),
   );
+
   useEffect(() => {
     return useMapStore.subscribe((state) => {
       const next = new Set<string>();
-      // Ẩn khỏi hitTest khi chưa visible (kể cả lúc đang trồi lên)
-      // Chỉ cho phép click tuna sau khi animation trồi lên xong hoàn toàn
-      // Khi đang lặn (diving) thì cũng không cho click
       if (!state.tunaVisible || state.tunaDiving) next.add("tuna");
       hiddenIdsRef.current = next;
     });
@@ -247,12 +237,15 @@ export default function WorldMap({
     const loop = () => {
       const { width, height } = dimensionsRef.current;
       if (width > 0 && height > 0) {
-        // Đọc tuna state từ refs — không cần re-render WorldMap
+        // Kiểm tra tiến hóa (isEvolved) từ progress ref
+        const isEvolved = tunaProgressRef.current >= 1000;
+
         const tunaState: TunaRenderState = {
           visible: tunaVisibleRef.current,
           animating: tunaAnimatingRef.current,
           animOffsetY: tunaAnimOffsetYRef.current,
           diving: tunaDivingRef.current,
+          isEvolved: isEvolved, // Đã fix lỗi Property 'isEvolved' is missing
         };
 
         renderMap(
@@ -306,7 +299,7 @@ export default function WorldMap({
     [onDragMove, onMouseMove],
   );
 
-  // ── Click handler: pool → animateTuna, các building khác → handleBuildingClick
+  // ── Click handler ────────────────────────────────────────────────
   const handleCanvasClick = useCallback(
     (e: React.MouseEvent<HTMLCanvasElement>) => {
       const canvas = canvasRef.current;
@@ -321,7 +314,6 @@ export default function WorldMap({
         rect.height / 2,
       );
 
-      // Tìm building được click (tôn trọng z-order và hidden)
       const clickedId = hitTest(
         world.x,
         world.y,
@@ -331,20 +323,16 @@ export default function WorldMap({
       );
 
       if (clickedId === "pool") {
-        // Toggle tuna: nếu visible → lặn xuống, nếu ẩn → trồi lên
-        const { tunaVisible, tunaAnimating, tunaDiving } =
-          useMapStore.getState();
+        const { tunaVisible, tunaAnimating, tunaDiving } = useMapStore.getState();
         if (tunaVisible && !tunaAnimating && !tunaDiving) {
           sinkTuna();
         } else if (!tunaVisible && !tunaAnimating && !tunaDiving) {
           animateTuna();
         }
-        // Không gọi handleBuildingClick pool để tránh mở modal
         return;
       }
 
       if (clickedId === "tuna") {
-        // Click tuna → toggle hiển thị description
         toggleTunaInfo();
         return;
       }

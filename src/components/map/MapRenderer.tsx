@@ -91,7 +91,6 @@ function drawFogOfWar(
   cX: number,
   cY: number,
   time: number,
-  // Nhận visible buildings để fog tính đúng (bao gồm tuna khi visible)
   visibleBuildings: Building[],
 ) {
   const { fogOffscreen, fogCtx: fctx } = getFogCanvas(width, height);
@@ -107,13 +106,6 @@ function drawFogOfWar(
     const bH = b.height * sTile;
 
     const maxVision = Math.max(bW, bH) * 2.5;
-    if (
-      x + bW + maxVision < 0 ||
-      x - maxVision > width ||
-      y + bH + maxVision < 0 ||
-      y - maxVision > height
-    ) continue;
-
     const centerX = x + bW / 2;
     const centerY = y + bH / 2;
 
@@ -174,32 +166,28 @@ function drawTorchEffect(
 ) {
   ctx.save();
   ctx.globalAlpha = alpha;
-
   ctx.beginPath();
   ctx.arc(flameX, flameY, size * 3.5, 0, Math.PI * 2);
   ctx.fillStyle = "rgba(255,140,0,0.2)";
   ctx.fill();
-
   ctx.beginPath();
   ctx.arc(flameX, flameY, size * 1.4, 0, Math.PI * 2);
   ctx.fillStyle = "#ff6600";
   ctx.fill();
-
   ctx.beginPath();
   ctx.arc(flameX, flameY, size, 0, Math.PI * 2);
   ctx.fillStyle = "#ffcc00";
   ctx.fill();
-
   ctx.restore();
 }
 
-// ─── RENDER PARAMS ──────────────────────────────────────────────────────────
-// Truyền tuna state xuống renderMap để renderer biết cách vẽ tuna
+// ─── TYPES ──────────────────────────────────────────────────────────────────
 export interface TunaRenderState {
-  visible: boolean;       // tuna đã trồi lên xong
-  animating: boolean;     // đang trong animation trồi lên
-  animOffsetY: number;    // world-unit offset (dương = lệch xuống dưới)
-  diving: boolean;        // đang trong animation lặn xuống
+  visible: boolean;
+  animating: boolean;
+  animOffsetY: number;
+  diving: boolean;
+  isEvolved: boolean;
 }
 
 // ─── MAIN RENDER ────────────────────────────────────────────────────────────
@@ -211,7 +199,7 @@ export function renderMap(
   hoveredBuildingId: string | null,
   status: string,
   weather: string,
-  tunaState?: TunaRenderState, // optional để backward-compatible
+  tunaState?: TunaRenderState,
 ) {
   const cX = width / 2;
   const cY = height / 2;
@@ -222,53 +210,45 @@ export function renderMap(
   ctx.fillStyle = "#000";
   ctx.fillRect(0, 0, width, height);
 
-  // 1. Background
   drawBackground(ctx, camera, width, height, sTile, cX, cY);
 
-  // ── Chuẩn bị danh sách buildings để render ──────────────────────────────
-  // Lọc hidden, tính renderWorldY (áp dụng animOffsetY cho tuna),
-  // sau đó sort theo zIndex để vật thể z cao hơn render đè lên trên.
-  type RenderEntry = {
-    b: Building;
-    renderWorldY: number; // worldY sau khi áp dụng offset
-  };
-
-  const entries: RenderEntry[] = [];
+  const entries: { b: Building; renderWorldY: number }[] = [];
 
   for (let i = 0; i < BUILDINGS.length; i++) {
     const b = BUILDINGS[i];
 
-    // ── Xử lý tuna ──────────────────────────────────────────────────────
     if (b.id === "tuna") {
-      // Ẩn hoàn toàn nếu không có animation nào đang chạy và chưa visible
-      const ts = tunaState;
-      if (!ts?.visible && !ts?.animating && !ts?.diving) continue;
+      if (!tunaState?.visible && !tunaState?.animating && !tunaState?.diving) continue;
 
-      const renderWorldY = b.worldY + (ts?.animOffsetY ?? 0);
-      entries.push({ b, renderWorldY });
+      const tunaInstance = { ...b };
+      
+      // SỬA TẠI ĐÂY: Sử dụng đường dẫn Web chuẩn
+      if (tunaState.isEvolved) {
+        tunaInstance.imageSrc = "/assets/decorate/tuna_evolved.png"; 
+        tunaInstance.name = "Tuna Đại Đế 🐉";
+      }
+
+      entries.push({ 
+        b: tunaInstance, 
+        renderWorldY: b.worldY + (tunaState.animOffsetY ?? 0) 
+      });
       continue;
     }
 
     entries.push({ b, renderWorldY: b.worldY });
   }
 
-  // Sort theo zIndex (thấp trước, cao sau = render đè lên)
   entries.sort((a, b) => (a.b.zIndex ?? 0) - (b.b.zIndex ?? 0));
 
-  // 2. Fog of war — chỉ tính cho buildings đang visible
   const visibleBuildings = entries.map((e) => e.b);
   drawFogOfWar(ctx, camera, width, height, sTile, cX, cY, time, visibleBuildings);
 
-  // 3. Buildings — render theo thứ tự zIndex
   for (let i = 0; i < entries.length; i++) {
     const { b, renderWorldY } = entries[i];
-
-    // Dùng renderWorldY (đã áp dụng animOffsetY) thay b.worldY
     const { x, y } = worldToScreen(b.worldX, renderWorldY, camera, cX, cY);
     const bW = b.width * sTile;
     const bH = b.height * sTile;
 
-    // Frustum culling
     if (x + bW < 0 || x > width || y + bH < 0 || y > height) continue;
 
     let offsetX = 0;
@@ -279,7 +259,6 @@ export function renderMap(
     }
 
     const isHovered = hoveredBuildingId === b.id;
-
     if (b.animationType === "shake_on_click" && isHovered) {
       offsetX = nextNoise() * (2 * camera.zoom);
       offsetY += nextNoise() * (2 * camera.zoom);
@@ -298,7 +277,6 @@ export function renderMap(
     drawBuilding(ctx, bW, bH, b.imageSrc, b.name, b.type);
     ctx.restore();
 
-    // Torch effect
     if (b.type === "torch") {
       if (!torchStates[b.id]) {
         torchStates[b.id] = { alpha: isDarkTime ? 1 : 0, userPreference: null };
@@ -310,17 +288,10 @@ export function renderMap(
       if (state.alpha > 0.01) {
         const flicker = Math.sin(time / 100) * 2;
         const size = (5 + flicker) * camera.zoom * state.alpha;
-        drawTorchEffect(
-          ctx,
-          x + bW / 2 + offsetX,
-          y + offsetY,
-          size,
-          state.alpha,
-        );
+        drawTorchEffect(ctx, x + bW / 2 + offsetX, y + offsetY, size, state.alpha);
       }
     }
   }
 
-  // 4. Weather
   drawWeatherEffects(ctx, width, height, weather);
 }
