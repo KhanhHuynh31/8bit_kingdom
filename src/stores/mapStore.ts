@@ -18,28 +18,53 @@ interface YtStats {
   lastUpdated: number;
 }
 
+export interface T1Animation {
+  active: boolean;
+  startX: number;
+  endX: number;
+  startY: number;
+  progress: number;
+  startTime: number;
+  duration: number;
+}
+
+export interface T1AppearAnimation {
+  active: boolean;
+  startX: number;
+  endX: number;
+  startY: number;
+  progress: number;
+  startTime: number;
+  duration: number;
+}
+
 interface MapState {
-  // ── State ────────────────────────────────────────────────────────────
   camera: Camera;
   selectedBuilding: Building | null;
   avocados: number;
   ytStats: YtStats;
-  isLoading: boolean; // Trạng thái để hiện loading UI và chặn trùng lặp request
+  isLoading: boolean;
   lastHarvestTime: Record<string, number>;
   unlockedMemories: number[];
   latestNews: News | null;
 
-  // Trạng thái runtime của tuna (không persist)
+  // Tuna runtime
   tunaVisible: boolean;
-  tunaAnimOffsetY: number; // world-unit offset hiện tại (dương = thấp hơn vị trí thật)
+  tunaAnimOffsetY: number;
   tunaAnimating: boolean;
-  tunaDiving: boolean;     // đang lặn xuống (reverse animation)
-  tunaInfoOpen: boolean;   // đang hiển thị description của tuna
+  tunaDiving: boolean;
+  tunaInfoOpen: boolean;
+  tunaProgress: number;
 
-  // Trạng thái tiến hóa của tuna (CẦN persist)
-  tunaProgress: number;    // Tiến trình cho ăn (0 - 1000)
+  // T1 & Trophy dynamic (không persist)
+  t1Visible: boolean;
+  t1WorldX: number;
+  t1WorldY: number;
+  trophyVisible: boolean;
+  t1Animation: T1Animation | null;
+  t1AppearAnimation: T1AppearAnimation | null; // Animation xuất hiện
 
-  // ── Actions ──────────────────────────────────────────────────────────
+  // Actions
   fetchYtStats: (force?: boolean) => Promise<void>;
   unlockMemory: (slotId: number, cost: number) => boolean;
   setCamera: (camera: Camera) => void;
@@ -50,14 +75,17 @@ interface MapState {
   addAvocados: (amount: number) => void;
   setLatestNews: (news: News) => void;
   setTunaProgress: (val: number) => void;
+  animateTuna: () => void;
+  sinkTuna: () => void;
+  toggleTunaInfo: () => void;
 
-  // Tuna actions
-  animateTuna: () => void;    // trồi lên
-  sinkTuna: () => void;       // lặn xuống
-  toggleTunaInfo: () => void; // mở/đóng bubble chat
+  // T1 & Trophy actions
+  showT1LeftOfTrophy: () => void;
+  startT1MoveAcrossTrophy: () => void;
+  updateT1Animation: (now: number) => void;
+  resetT1AndTrophy: () => void;
 }
 
-// Giá trị mặc định
 const DEFAULT_CAMERA: Camera = { offsetX: 0, offsetY: 0, zoom: 1 };
 const DEFAULT_YT_STATS: YtStats = {
   subscribers: 0,
@@ -69,14 +97,23 @@ const DEFAULT_YT_STATS: YtStats = {
 };
 export const YOUTUBE_CHANNEL_ID = "UCXA1PWUJIHV_PDStz7ksAUg";
 
-// ── Hằng số animation tuna ─────────────────────────────────────────────────
-const TUNA_ANIM_DURATION = 800; // ms
-const TUNA_FLOAT_OFFSET = 3;   // world units
+const TUNA_ANIM_DURATION = 800;
+const TUNA_FLOAT_OFFSET = 3;
+
+// Vị trí mặc định của t1 và trophy (lấy từ constants/map)
+const DEFAULT_T1_X = 9;
+const DEFAULT_T1_Y = -8;
+const TROPHY_X = 12;
+const TROPHY_Y = -7;
+const TROPHY_W = 2;
+const T1_W = 3;
+
+// Vị trí xuất phát xa (bên trái màn hình, cách trophy khoảng 30 đơn vị)
+const FAR_LEFT_X = TROPHY_X - 30;
 
 export const useMapStore = create<MapState>()(
   persist(
     (set, get) => ({
-      // ── Khởi tạo State ───────────────────────────────────────────────────
       camera: DEFAULT_CAMERA,
       selectedBuilding: null,
       avocados: 0,
@@ -86,37 +123,29 @@ export const useMapStore = create<MapState>()(
       lastHarvestTime: {},
       latestNews: null,
 
-      // Tuna Runtime
       tunaVisible: false,
       tunaAnimOffsetY: TUNA_FLOAT_OFFSET,
       tunaAnimating: false,
       tunaDiving: false,
       tunaInfoOpen: false,
-
-      // Tuna Persist
       tunaProgress: 0,
 
-      // ── Logic Xử lý Actions ──────────────────────────────────────────────
+      t1Visible: false,
+      t1WorldX: DEFAULT_T1_X,
+      t1WorldY: DEFAULT_T1_Y,
+      trophyVisible: true,
+      t1Animation: null,
+      t1AppearAnimation: null,
 
       fetchYtStats: async (force = false) => {
         const { ytStats, isLoading } = get();
-
-        // Kiểm tra thời gian: 60 phút (3600000 ms)
         const isExpired = Date.now() - ytStats.lastUpdated > 3600000;
-
-        // ĐIỀU KIỆN CHẠY API:
-        // 1. Được gọi ép buộc (force = true)
-        // 2. HOẶC Dữ liệu hiện tại đang là 0 (chưa có data)
-        // 3. HOẶC Dữ liệu đã cũ (quá 60 phút)
         const shouldFetch = force || ytStats.subscribers === 0 || isExpired;
-
         if (!shouldFetch || isLoading) return;
-
         set({ isLoading: true });
         try {
           const res = await fetch("/api/youtube");
           const json = await res.json();
-
           if (json.subscribers !== undefined) {
             set({
               ytStats: {
@@ -139,7 +168,6 @@ export const useMapStore = create<MapState>()(
       },
 
       setCamera: (camera) => set({ camera }),
-
       updateOffset: (dx, dy) => {
         if (dx === 0 && dy === 0) return;
         set((state) => ({
@@ -150,94 +178,51 @@ export const useMapStore = create<MapState>()(
           },
         }));
       },
-
       setZoom: (zoom) => {
         if (get().camera.zoom === zoom) return;
-        set((state) => ({
-          camera: { ...state.camera, zoom },
-        }));
+        set((state) => ({ camera: { ...state.camera, zoom } }));
       },
-
-      selectBuilding: (building) => {
-        if (!building) {
-          set({ selectedBuilding: null });
-          return;
-        }
-        set({ selectedBuilding: { ...building, clickedAt: Date.now() } });
-      },
-
-      harvest: (buildingId) =>
-        set((state) => ({
-          lastHarvestTime: {
-            ...state.lastHarvestTime,
-            [buildingId]: Date.now(),
-          },
-        })),
-
-      addAvocados: (amount) => {
-        if (amount === 0) return;
-        set((state) => ({ avocados: state.avocados + amount }));
-      },
-
-      setLatestNews: (news) => {
-        if (get().latestNews?.id === news.id) return;
-        set({ latestNews: news });
-      },
-
+      selectBuilding: (building) => set({ selectedBuilding: building ? { ...building, clickedAt: Date.now() } : null }),
+      harvest: (buildingId) => set((state) => ({ lastHarvestTime: { ...state.lastHarvestTime, [buildingId]: Date.now() } })),
+      addAvocados: (amount) => set((state) => ({ avocados: state.avocados + amount })),
+      setLatestNews: (news) => set({ latestNews: news }),
       setTunaProgress: (val) => set({ tunaProgress: Math.min(val, 1000) }),
 
       unlockMemory: (slotId, cost) => {
         const { avocados, unlockedMemories } = get();
         if (avocados < cost || unlockedMemories.includes(slotId)) return false;
-        set({
-          avocados: avocados - cost,
-          unlockedMemories: [...unlockedMemories, slotId],
-        });
+        set({ avocados: avocados - cost, unlockedMemories: [...unlockedMemories, slotId] });
         return true;
       },
 
-      // ── Tuna Animation: trồi lên ─────────────────────────────────────────
       animateTuna: () => {
         const { tunaVisible, tunaAnimating, tunaDiving } = get();
         if (tunaVisible || tunaAnimating || tunaDiving) return;
-
         set({ tunaAnimating: true, tunaAnimOffsetY: TUNA_FLOAT_OFFSET, tunaInfoOpen: false });
-
         const start = performance.now();
         const tick = () => {
           const elapsed = performance.now() - start;
           const progress = Math.min(elapsed / TUNA_ANIM_DURATION, 1);
-          const eased = 1 - Math.pow(1 - progress, 3); // Ease-out cubic
+          const eased = 1 - Math.pow(1 - progress, 3);
           set({ tunaAnimOffsetY: TUNA_FLOAT_OFFSET * (1 - eased) });
-
-          if (progress < 1) {
-            requestAnimationFrame(tick);
-          } else {
-            set({ tunaVisible: true, tunaAnimating: false, tunaAnimOffsetY: 0 });
-          }
+          if (progress < 1) requestAnimationFrame(tick);
+          else set({ tunaVisible: true, tunaAnimating: false, tunaAnimOffsetY: 0 });
         };
         requestAnimationFrame(tick);
       },
 
-      // ── Tuna Animation: lặn xuống ───────────────────────────────────────
       sinkTuna: () => {
         const { tunaVisible, tunaAnimating, tunaDiving } = get();
         if (!tunaVisible || tunaAnimating || tunaDiving) return;
-
         set({ tunaDiving: true, tunaVisible: false, tunaAnimOffsetY: 0, tunaInfoOpen: false });
-
         const start = performance.now();
         const tick = () => {
           const elapsed = performance.now() - start;
           const progress = Math.min(elapsed / TUNA_ANIM_DURATION, 1);
-          const eased = Math.pow(progress, 3); // Ease-in cubic
+          const eased = Math.pow(progress, 3);
           set({ tunaAnimOffsetY: TUNA_FLOAT_OFFSET * eased });
-
-          if (progress < 1) {
-            requestAnimationFrame(tick);
-          } else {
-            set({ tunaDiving: false, tunaAnimOffsetY: TUNA_FLOAT_OFFSET });
-          }
+          if (progress < 1) requestAnimationFrame(tick);
+          else set({ tunaDiving: false, tunaAnimOffsetY: TUNA_FLOAT_OFFSET });
         };
         requestAnimationFrame(tick);
       },
@@ -247,22 +232,112 @@ export const useMapStore = create<MapState>()(
         if (!tunaVisible) return;
         set({ tunaInfoOpen: !tunaInfoOpen });
       },
+
+      showT1LeftOfTrophy: () => {
+        const targetX = TROPHY_X - T1_W; // Vị trí đích bên cạnh trophy
+        set({
+          t1Visible: true,
+          t1WorldX: FAR_LEFT_X, // Bắt đầu từ xa bên trái
+          t1WorldY: TROPHY_Y,
+          trophyVisible: true,
+          t1Animation: null,
+          t1AppearAnimation: {
+            active: true,
+            startX: FAR_LEFT_X,
+            endX: targetX,
+            startY: TROPHY_Y,
+            progress: 0,
+            startTime: performance.now(),
+            duration: 1000, // 1 giây cho animation xuất hiện
+          },
+        });
+      },
+
+      startT1MoveAcrossTrophy: () => {
+        const { t1Visible, t1WorldX, trophyVisible } = get();
+        if (!t1Visible || !trophyVisible) return;
+        const endX = TROPHY_X + TROPHY_W + 2;
+        const startX = t1WorldX;
+        set({
+          t1Animation: {
+            active: true,
+            startX,
+            endX,
+            startY: TROPHY_Y,
+            progress: 0,
+            startTime: performance.now(),
+            duration: 800,
+          },
+          t1AppearAnimation: null, // Clear appear animation
+        });
+      },
+
+      updateT1Animation: (now: number) => {
+        // Xử lý animation xuất hiện
+        const { t1AppearAnimation } = get();
+        if (t1AppearAnimation && t1AppearAnimation.active) {
+          const elapsed = now - t1AppearAnimation.startTime;
+          const progress = Math.min(elapsed / t1AppearAnimation.duration, 1);
+          const eased = 1 - Math.pow(1 - progress, 3); // Ease out cubic
+          const newX = t1AppearAnimation.startX + (t1AppearAnimation.endX - t1AppearAnimation.startX) * eased;
+          set({ t1WorldX: newX, t1AppearAnimation: { ...t1AppearAnimation, progress } });
+          
+          if (progress >= 1) {
+            // Animation kết thúc, đặt chính xác vị trí đích và xóa animation
+            set({
+              t1WorldX: t1AppearAnimation.endX,
+              t1AppearAnimation: null,
+            });
+          }
+          return; // Không xử lý animation di chuyển ngang nếu đang xuất hiện
+        }
+
+        // Xử lý animation di chuyển ngang qua trophy
+        const { t1Animation } = get();
+        if (t1Animation && t1Animation.active) {
+          const elapsed = now - t1Animation.startTime;
+          const progress = Math.min(elapsed / t1Animation.duration, 1);
+          const eased = 1 - Math.pow(1 - progress, 3);
+          const newX = t1Animation.startX + (t1Animation.endX - t1Animation.startX) * eased;
+          set({ t1WorldX: newX, t1Animation: { ...t1Animation, progress } });
+          
+          if (progress >= 1) {
+            set({
+              t1Visible: false,
+              trophyVisible: false,
+              t1Animation: null,
+              t1WorldX: DEFAULT_T1_X,
+              t1WorldY: DEFAULT_T1_Y,
+            });
+          }
+        }
+      },
+
+      resetT1AndTrophy: () => {
+        set({
+          t1Visible: false,
+          t1WorldX: DEFAULT_T1_X,
+          t1WorldY: DEFAULT_T1_Y,
+          trophyVisible: true,
+          t1Animation: null,
+          t1AppearAnimation: null,
+        });
+      },
     }),
     {
       name: "map-storage",
-      // Chỉ lưu trữ những dữ liệu cần thiết qua các phiên làm việc
       partialize: (state) => ({
         avocados: state.avocados,
         lastHarvestTime: state.lastHarvestTime,
         unlockedMemories: state.unlockedMemories,
-        ytStats: state.ytStats, // Lưu lại để lần sau mở web có data ngay
-        tunaProgress: state.tunaProgress, // Persist tiến trình tiến hóa
+        ytStats: state.ytStats,
+        tunaProgress: state.tunaProgress,
       }),
     },
-  )
+  ),
 );
 
-// ─── Selector Helpers (Tối ưu render cho Next.js 16) ─────────────────────────
+// ─── Selector Helpers ─────────────────────────────────────────
 
 export const selectCamera = (s: MapState) => s.camera;
 export const selectAvocados = (s: MapState) => s.avocados;
@@ -279,15 +354,21 @@ export const selectTunaAnimating = (s: MapState) => s.tunaAnimating;
 export const selectTunaDiving = (s: MapState) => s.tunaDiving;
 export const selectTunaInfoOpen = (s: MapState) => s.tunaInfoOpen;
 
-// Computed State (Số liệu phái sinh - không cần lưu trữ trực tiếp)
-export const selectTotalEnergy = (s: MapState) =>
-  s.ytStats.subscribers * 100 + // 1 Sub    = 100 Sét
-  s.ytStats.views * 1 +         // 1 View   = 1 Sét
-  s.ytStats.totalLikes * 50 +   // 1 Like   = 50 Sét
-  s.ytStats.totalComments * 10; // 1 Comment = 10 Sét
+// T1 & Trophy selectors
+export const selectT1Visible = (s: MapState) => s.t1Visible;
+export const selectT1WorldX = (s: MapState) => s.t1WorldX;
+export const selectT1WorldY = (s: MapState) => s.t1WorldY;
+export const selectTrophyVisible = (s: MapState) => s.trophyVisible;
+export const selectT1Animation = (s: MapState) => s.t1Animation;
+export const selectT1AppearAnimation = (s: MapState) => s.t1AppearAnimation;
 
-// Chú ý: Khi dùng Actions trong Component, nên lấy lẻ từng hàm
-// hoặc dùng useShallow để tránh lỗi "getSnapshot" infinite loop.
+// Computed State
+export const selectTotalEnergy = (s: MapState) =>
+  s.ytStats.subscribers * 100 +
+  s.ytStats.views * 1 +
+  s.ytStats.totalLikes * 50 +
+  s.ytStats.totalComments * 10;
+
 export const selectActions = (s: MapState) => ({
   setCamera: s.setCamera,
   updateOffset: s.updateOffset,
@@ -302,4 +383,8 @@ export const selectActions = (s: MapState) => ({
   sinkTuna: s.sinkTuna,
   toggleTunaInfo: s.toggleTunaInfo,
   setTunaProgress: s.setTunaProgress,
+  showT1LeftOfTrophy: s.showT1LeftOfTrophy,
+  startT1MoveAcrossTrophy: s.startT1MoveAcrossTrophy,
+  updateT1Animation: s.updateT1Animation,
+  resetT1AndTrophy: s.resetT1AndTrophy,
 });

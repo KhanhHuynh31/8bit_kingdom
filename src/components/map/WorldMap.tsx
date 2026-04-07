@@ -3,11 +3,9 @@
 import { useRef, useEffect, useCallback, useState, useMemo } from "react";
 import { useMapStore } from "@/stores/mapStore";
 import { useMapDrag } from "@/hooks/useMapDrag";
-import { useBuildings } from "@/hooks/useBuildings";
 import { renderMap, TunaRenderState } from "./MapRenderer";
 import { screenToWorld } from "@/utils/coords";
-import { MIN_ZOOM, MAX_ZOOM } from "@/constants/map";
-
+import { MIN_ZOOM, MAX_ZOOM, BUILDINGS } from "@/constants/map";
 import HUD from "@/components/ui/HUD";
 import InfoModal from "@/components/ui/InfoModal";
 import CoordDisplay from "./overplay/CoordDisplay";
@@ -16,7 +14,6 @@ import { TimeStatus, WeatherType } from "@/hooks/useTimeCycle";
 import dynamic from "next/dynamic";
 import { Building } from "@/types";
 
-// ─── Spatial Grid ──────────────────────────────────────────────────────────
 const CELL_SIZE = 200;
 
 interface GridCell {
@@ -53,29 +50,19 @@ function hitTest(
   const cy = Math.floor(wy / CELL_SIZE);
   const cell = grid.get(`${cx}:${cy}`);
   if (!cell) return null;
-
   let best: Building | null = null;
-
   for (const id of cell.ids) {
     if (hiddenIds.has(id)) continue;
-
     const b = buildingMap.get(id);
     if (!b) continue;
-
-    if (
-      wx >= b.worldX &&
-      wx <= b.worldX + b.width &&
-      wy >= b.worldY &&
-      wy <= b.worldY + b.height
-    ) {
-      if (!best || (b.zIndex ?? 0) > (best.zIndex ?? 0)) {
-        best = b;
-      }
+    if (wx >= b.worldX && wx <= b.worldX + b.width && wy >= b.worldY && wy <= b.worldY + b.height) {
+      if (!best || (b.zIndex ?? 0) > (best.zIndex ?? 0)) best = b;
     }
   }
-
   return best?.id ?? null;
 }
+
+const WorldOverlay = dynamic(() => import("../map/overplay/WorldOverplay"), { ssr: false });
 
 interface WorldMapProps {
   status: TimeStatus;
@@ -85,10 +72,6 @@ interface WorldMapProps {
   setManualTime: (val: TimeStatus | null) => void;
   setManualWeather: (val: WeatherType | null) => void;
 }
-
-const WorldOverlay = dynamic(() => import("../map/overplay/WorldOverplay"), {
-  ssr: false,
-});
 
 export default function WorldMap({
   status,
@@ -102,8 +85,32 @@ export default function WorldMap({
   const containerRef = useRef<HTMLDivElement>(null);
   const animRef = useRef<number | null>(null);
 
-  // ── Refs để RAF loop đọc giá trị mới nhất mà KHÔNG cần restart ──
-  const cameraRef = useRef(useMapStore.getState().camera);
+  // Store state & actions
+  const camera = useMapStore((s) => s.camera);
+  const setZoom = useMapStore((s) => s.setZoom);
+  const animateTuna = useMapStore((s) => s.animateTuna);
+  const sinkTuna = useMapStore((s) => s.sinkTuna);
+  const toggleTunaInfo = useMapStore((s) => s.toggleTunaInfo);
+  const showT1LeftOfTrophy = useMapStore((s) => s.showT1LeftOfTrophy);
+  const startT1MoveAcrossTrophy = useMapStore((s) => s.startT1MoveAcrossTrophy);
+  const updateT1Animation = useMapStore((s) => s.updateT1Animation);
+  const t1Visible = useMapStore((s) => s.t1Visible);
+  const t1WorldX = useMapStore((s) => s.t1WorldX);
+  const t1WorldY = useMapStore((s) => s.t1WorldY);
+  const trophyVisible = useMapStore((s) => s.trophyVisible);
+
+  // State để hiển thị tên tạm thời cho secondary building
+  const [clickedSecondary, setClickedSecondary] = useState<{ id: string; name: string } | null>(null);
+
+
+  // Hàm hiển thị tên tạm thời
+  const showTempName = useCallback((id: string, name: string) => {
+    setClickedSecondary({ id, name });
+    setTimeout(() => setClickedSecondary(null), 2000);
+  }, []);
+
+  // Refs cho RAF loop
+  const cameraRef = useRef(camera);
   const statusRef = useRef(status);
   const weatherRef = useRef(weather);
   const hoveredIdRef = useRef<string | null>(null);
@@ -114,64 +121,65 @@ export default function WorldMap({
   const tunaAnimOffsetYRef = useRef(0);
   const tunaAnimatingRef = useRef(false);
   const tunaDivingRef = useRef(false);
-  const tunaProgressRef = useRef(0); // Dùng ref để tránh re-render mỗi khi progress đổi
+  const tunaProgressRef = useRef(0);
 
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
 
-  const setZoom = useMapStore((s) => s.setZoom);
-  const animateTuna = useMapStore((s) => s.animateTuna);
-  const sinkTuna = useMapStore((s) => s.sinkTuna);
-  const toggleTunaInfo = useMapStore((s) => s.toggleTunaInfo);
+  const { onPointerDown, onPointerMove: onDragMove, onPointerUp } = useMapDrag(canvasRef);
 
-  const {
-    onPointerDown,
-    onPointerMove: onDragMove,
-    onPointerUp,
-  } = useMapDrag(canvasRef);
-  const { buildings, handleClick: handleBuildingClick } = useBuildings();
+  // Đồng bộ camera ref
+  useEffect(() => {
+    cameraRef.current = camera;
+  }, [camera]);
 
-  // ── Đồng bộ refs với props ───────────────────────────────────────
   useEffect(() => {
     statusRef.current = status;
-  }, [status]);
-  useEffect(() => {
     weatherRef.current = weather;
-  }, [weather]);
+  }, [status, weather]);
 
+  // Subscribe tuna state
   useEffect(() => {
-    return useMapStore.subscribe((state) => {
-      cameraRef.current = state.camera;
-    });
+    const unsubVisible = useMapStore.subscribe((state) => { tunaVisibleRef.current = state.tunaVisible; });
+    const unsubOffset = useMapStore.subscribe((state) => { tunaAnimOffsetYRef.current = state.tunaAnimOffsetY; });
+    const unsubAnim = useMapStore.subscribe((state) => { tunaAnimatingRef.current = state.tunaAnimating; });
+    const unsubDiving = useMapStore.subscribe((state) => { tunaDivingRef.current = state.tunaDiving; });
+    const unsubProgress = useMapStore.subscribe((state) => { tunaProgressRef.current = state.tunaProgress; });
+    return () => {
+      unsubVisible(); unsubOffset(); unsubAnim(); unsubDiving(); unsubProgress();
+    };
   }, []);
 
-  // Subscribe tuna state — cập nhật refs để RAF loop đọc
-  useEffect(() => {
-    return useMapStore.subscribe((state) => {
-      tunaVisibleRef.current = state.tunaVisible;
-      tunaAnimOffsetYRef.current = state.tunaAnimOffsetY;
-      tunaAnimatingRef.current = state.tunaAnimating;
-      tunaDivingRef.current = state.tunaDiving;
-      tunaProgressRef.current = state.tunaProgress; // Sync progress để check tiến hóa
+  // Tạo danh sách buildings động dựa trên BUILDINGS tĩnh và state từ store
+  const dynamicBuildings = useMemo((): Building[] => {
+    return BUILDINGS.map((b) => {
+      if (b.id === "t1") {
+        return {
+          ...b,
+          worldX: t1WorldX,
+          worldY: t1WorldY,
+          interactive: t1Visible,
+        };
+      }
+      if (b.id === "trophy") {
+        return {
+          ...b,
+          interactive: trophyVisible,
+        };
+      }
+      return b;
     });
-  }, []);
+  }, [t1Visible, t1WorldX, t1WorldY, trophyVisible]);
 
-  // ── Spatial index ────────────────────────────────────────────────
+  // Spatial index từ dynamicBuildings
   const { spatialGrid, buildingMap } = useMemo(() => {
-    const buildingMap = new Map(buildings.map((b) => [b.id, b]));
-    const spatialGrid = buildSpatialGrid(buildings);
+    const buildingMap = new Map(dynamicBuildings.map((b) => [b.id, b]));
+    const spatialGrid = buildSpatialGrid(dynamicBuildings);
     return { spatialGrid, buildingMap };
-  }, [buildings]);
+  }, [dynamicBuildings]);
 
-  const hiddenIdsRef = useRef<Set<string>>(
-    (() => {
-      const s = useMapStore.getState();
-      return !s.tunaVisible || s.tunaDiving
-        ? new Set(["tuna"])
-        : new Set<string>();
-    })(),
-  );
-
+  // hiddenIds (tuna)
+  const hiddenIdsRef = useRef<Set<string>>(new Set());
   useEffect(() => {
     return useMapStore.subscribe((state) => {
       const next = new Set<string>();
@@ -180,7 +188,7 @@ export default function WorldMap({
     });
   }, []);
 
-  // ── Hover với O(1) hit-test ──────────────────────────────────────
+  // Hover hit-test
   const onMouseMove = useCallback(
     (e: React.MouseEvent<HTMLCanvasElement>) => {
       const canvas = canvasRef.current;
@@ -193,13 +201,7 @@ export default function WorldMap({
         rect.width / 2,
         rect.height / 2,
       );
-      const found = hitTest(
-        world.x,
-        world.y,
-        spatialGrid,
-        buildingMap,
-        hiddenIdsRef.current,
-      );
+      const found = hitTest(world.x, world.y, spatialGrid, buildingMap, hiddenIdsRef.current);
       if (found !== hoveredIdRef.current) {
         hoveredIdRef.current = found;
         setHoveredId(found);
@@ -208,7 +210,7 @@ export default function WorldMap({
     [spatialGrid, buildingMap],
   );
 
-  // ── Resize ──────────────────────────────────────────────────────
+  // Resize observer
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
@@ -219,15 +221,14 @@ export default function WorldMap({
         canvas.width = width;
         canvas.height = height;
       }
-      const next = { width, height };
-      dimensionsRef.current = next;
-      setDimensions(next);
+      dimensionsRef.current = { width, height };
+      setDimensions({ width, height });
     });
     observer.observe(container);
     return () => observer.disconnect();
   }, []);
 
-  // ── RAF loop ────────────────────────────────────────────────────
+  // RAF loop: cập nhật animation t1 và render
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -235,19 +236,19 @@ export default function WorldMap({
     if (!ctx) return;
 
     const loop = () => {
+      const now = performance.now();
+      updateT1Animation(now);
+
       const { width, height } = dimensionsRef.current;
       if (width > 0 && height > 0) {
-        // Kiểm tra tiến hóa (isEvolved) từ progress ref
         const isEvolved = tunaProgressRef.current >= 1000;
-
         const tunaState: TunaRenderState = {
           visible: tunaVisibleRef.current,
           animating: tunaAnimatingRef.current,
           animOffsetY: tunaAnimOffsetYRef.current,
           diving: tunaDivingRef.current,
-          isEvolved: isEvolved, // Đã fix lỗi Property 'isEvolved' is missing
+          isEvolved,
         };
-
         renderMap(
           ctx,
           cameraRef.current,
@@ -257,6 +258,8 @@ export default function WorldMap({
           statusRef.current,
           weatherRef.current,
           tunaState,
+          dynamicBuildings,
+          clickedSecondary, // Truyền clickedSecondary vào renderMap
         );
       }
       animRef.current = requestAnimationFrame(loop);
@@ -265,20 +268,14 @@ export default function WorldMap({
     return () => {
       if (animRef.current) cancelAnimationFrame(animRef.current);
     };
-  }, []);
+  }, [dynamicBuildings, updateT1Animation, clickedSecondary]);
 
-  // ── Wheel zoom ──────────────────────────────────────────────────
+  // Wheel zoom
   const onWheel = useCallback(
     (e: WheelEvent) => {
       e.preventDefault();
       const delta = e.deltaY > 0 ? -0.1 : 0.1;
-      const newZoom = Math.min(
-        MAX_ZOOM,
-        Math.max(
-          MIN_ZOOM,
-          parseFloat((cameraRef.current.zoom + delta).toFixed(1)),
-        ),
-      );
+      const newZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, parseFloat((cameraRef.current.zoom + delta).toFixed(1))));
       setZoom(newZoom);
     },
     [setZoom],
@@ -299,13 +296,12 @@ export default function WorldMap({
     [onDragMove, onMouseMove],
   );
 
-  // ── Click handler ────────────────────────────────────────────────
+  // Click handler
   const handleCanvasClick = useCallback(
     (e: React.MouseEvent<HTMLCanvasElement>) => {
       const canvas = canvasRef.current;
       if (!canvas) return;
       const rect = canvas.getBoundingClientRect();
-
       const world = screenToWorld(
         e.clientX - rect.left,
         e.clientY - rect.top,
@@ -313,21 +309,22 @@ export default function WorldMap({
         rect.width / 2,
         rect.height / 2,
       );
-
-      const clickedId = hitTest(
-        world.x,
-        world.y,
-        spatialGrid,
-        buildingMap,
-        hiddenIdsRef.current,
-      );
+      const clickedId = hitTest(world.x, world.y, spatialGrid, buildingMap, hiddenIdsRef.current);
+      if (!clickedId) return;
 
       if (clickedId === "pool") {
         const { tunaVisible, tunaAnimating, tunaDiving } = useMapStore.getState();
-        if (tunaVisible && !tunaAnimating && !tunaDiving) {
-          sinkTuna();
-        } else if (!tunaVisible && !tunaAnimating && !tunaDiving) {
-          animateTuna();
+        if (tunaVisible && !tunaAnimating && !tunaDiving) sinkTuna();
+        else if (!tunaVisible && !tunaAnimating && !tunaDiving) animateTuna();
+        return;
+      }
+
+      if (clickedId === "trophy") {
+        if (!trophyVisible) return;
+        if (!t1Visible) {
+          showT1LeftOfTrophy();
+        } else {
+          startT1MoveAcrossTrophy();
         }
         return;
       }
@@ -337,16 +334,18 @@ export default function WorldMap({
         return;
       }
 
-      handleBuildingClick(e.clientX, e.clientY, cameraRef.current, rect);
+      // Các building khác
+      const building = buildingMap.get(clickedId);
+      if (building && building.interactive) {
+        if (building.type === "secondary") {
+          // Hiển thị tên tạm thời trên đầu building
+          showTempName(building.id, building.name);
+        } else {
+          useMapStore.getState().selectBuilding(building);
+        }
+      }
     },
-    [
-      handleBuildingClick,
-      spatialGrid,
-      buildingMap,
-      animateTuna,
-      sinkTuna,
-      toggleTunaInfo,
-    ],
+    [spatialGrid, buildingMap, animateTuna, sinkTuna, toggleTunaInfo, showT1LeftOfTrophy, startT1MoveAcrossTrophy, t1Visible, trophyVisible, showTempName],
   );
 
   return (
@@ -374,18 +373,20 @@ export default function WorldMap({
           onClick={handleCanvasClick}
         />
         <WorldOverlay
-          camera={cameraRef.current}
+          camera={camera}
           width={dimensions.width}
           height={dimensions.height}
         />
       </div>
 
+ 
+
       <LightSystem
-        camera={cameraRef.current}
+        camera={camera}
         width={dimensions.width}
         height={dimensions.height}
         status={status}
-        buildings={buildings}
+        buildings={dynamicBuildings}
       />
 
       <div className="absolute inset-0 z-50 pointer-events-none">
