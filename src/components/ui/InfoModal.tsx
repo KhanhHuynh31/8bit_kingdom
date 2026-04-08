@@ -21,9 +21,6 @@ const CONTENT_MAP: Record<
   cinema: dynamic(() =>
     import("../Content/CinemaConent").then((mod) => mod.CinemaContent),
   ),
-  fame: dynamic(() =>
-    import("../Content/FameContent").then((mod) => mod.FameContent),
-  ),
   bank: dynamic(() =>
     import("../Content/BankContent").then((mod) => mod.BankContent),
   ),
@@ -34,9 +31,6 @@ const CONTENT_MAP: Record<
     import("../Content/MailBoxContent").then((mod) => mod.MailboxContent),
   ),
   news: dynamic(() => import("../Content/NewsContent")), // Nếu NewsContent export default
-  property: dynamic(() =>
-    import("../Content/PropertyContent").then((mod) => mod.PropertyContent),
-  ),
 };
 
 export default function InfoModal() {

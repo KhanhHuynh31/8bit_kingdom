@@ -16,13 +16,18 @@ import {
   ShieldCheck,
   ChevronRight,
 } from "lucide-react";
+import { selectTotalEnergy, useMapStore } from "@/stores/mapStore";
 
 export const CastleContent = ({ data }: { data: Building }) => {
+  const subscribers = useMapStore((state) => state.ytStats.subscribers);
+  const videoCount = useMapStore((state) => state.ytStats.videoCount);
+  const avocados = useMapStore((state) => state.avocados);
+  const totalEnergy = useMapStore(selectTotalEnergy);
   const socialLinks = [
     {
       label: "YouTube",
       icon: Play,
-      url: "#",
+      url: "https://www.youtube.com/@pu8bit",
       borderColor: "#7a2a1a",
       iconColor: "#c07060",
       glow: "rgba(180,60,40,0.3)",
@@ -38,15 +43,15 @@ export const CastleContent = ({ data }: { data: Building }) => {
     {
       label: "Discord",
       icon: MessageSquare,
-      url: "#",
+      url: "https://discord.gg/eyY9PYBA38",
       borderColor: "#3a3a7a",
       iconColor: "#8080d0",
       glow: "rgba(100,100,220,0.25)",
     },
     {
-      label: "Email",
+      label: "quockhank318@gmail.com",
       icon: Mail,
-      url: "#",
+      url: "mailto:quockhank318@gmail.com",
       borderColor: "#1a5a3a",
       iconColor: "#60c090",
       glow: "rgba(60,160,100,0.25)",
@@ -56,25 +61,22 @@ export const CastleContent = ({ data }: { data: Building }) => {
   const stats = [
     {
       label: "Cư dân",
-      val: data.stats?.subscribers || "10k+",
+      val: subscribers,
       icon: Users,
       color: "#c8a040",
     },
     {
       label: "Văn thư",
-      val: data.stats?.videoCount || "120",
+      val: videoCount,
       icon: Video,
       color: "#60c090",
     },
-    { label: "Nhiệt lượng", val: "1.2M", icon: Flame, color: "#c06050" },
-    { label: "Hạt bơ", val: "9.8k", icon: Gem, color: "#7aaad4" },
+    { label: "Nhiệt lượng", val: totalEnergy, icon: Flame, color: "#c06050" },
+    { label: "Hạt bơ", val: avocados, icon: Gem, color: "#7aaad4" },
   ];
 
   return (
-    <div
-      className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700"
-      
-    >
+    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
       {/* ── 1. Profile header ─────────────────────────────────────────── */}
       <div className="flex flex-col md:flex-row gap-8 items-center md:items-start text-center md:text-left">
         {/* Avatar */}
@@ -123,7 +125,6 @@ export const CastleContent = ({ data }: { data: Building }) => {
             <h2
               className="text-4xl uppercase leading-none mb-3"
               style={{
-                
                 fontWeight: 700,
                 color: "#e8c97a",
                 letterSpacing: "0.04em",
@@ -139,7 +140,6 @@ export const CastleContent = ({ data }: { data: Building }) => {
               <span
                 className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest px-3 py-1"
                 style={{
-                  
                   color: "#c8a040",
                   background: "rgba(140,100,30,0.2)",
                   border: "1px solid #6b4c1e",
@@ -213,7 +213,6 @@ export const CastleContent = ({ data }: { data: Building }) => {
             <p
               className="text-2xl tracking-tight"
               style={{
-                
                 color: "#e8c97a",
                 textShadow: "0 0 12px rgba(232,200,120,0.25)",
               }}
@@ -222,7 +221,7 @@ export const CastleContent = ({ data }: { data: Building }) => {
             </p>
             <p
               className="text-[9px] uppercase tracking-widest mt-1"
-              style={{color: "#5a4020" }}
+              style={{ color: "#5a4020" }}
             >
               {s.label}
             </p>
@@ -244,7 +243,7 @@ export const CastleContent = ({ data }: { data: Building }) => {
             />
             <span
               className="text-[9px] uppercase tracking-[0.4em]"
-              style={{color: "#6b4c1e" }}
+              style={{ color: "#6b4c1e" }}
             >
               Sử thi vương quốc
             </span>
@@ -314,7 +313,7 @@ export const CastleContent = ({ data }: { data: Building }) => {
             />
             <span
               className="text-[9px] uppercase tracking-[0.4em]"
-              style={{color: "#6b4c1e" }}
+              style={{ color: "#6b4c1e" }}
             >
               Cổng liên kết
             </span>
@@ -333,6 +332,7 @@ export const CastleContent = ({ data }: { data: Building }) => {
                 <a
                   key={i}
                   href={link.url}
+                  target="_blank"
                   className="group flex items-center justify-between transition-all duration-300"
                   style={{
                     background: "linear-gradient(160deg, #251a0a, #1a1005)",
@@ -366,9 +366,8 @@ export const CastleContent = ({ data }: { data: Building }) => {
                     </div>
                     {/* Label */}
                     <span
-                      className="text-xs uppercase tracking-[0.2em]"
+                      className="text-xs tracking-[0.2em]"
                       style={{
-                        
                         color: "#c8a870",
                       }}
                     >

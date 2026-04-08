@@ -3,61 +3,25 @@ import {
   Megaphone,
   Scroll,
   Info,
-  AlertTriangle,
-  Hammer,
   Calendar,
   Sparkles,
 } from "lucide-react";
 import { Building } from "@/types";
 export const newsList = [
-  {
-    id: 4,
-    type: "classified",
-    tag: "RAO VẶT",
-    title: "Tìm kiếm Thợ Rèn Bậc Thầy",
-    desc: "Cần rèn lại thanh kiếm gãy từ tàn tích quỷ dữ. Phần thưởng: 500 vàng và một viên ngọc lục bảo.",
-    date: "Ngày 10, Tháng Gió",
-    icon: Hammer,
-    color: "text-[#4ade80]",
-    border: "border-[#2d5a2d]",
-    bg: "bg-[#1e3a1e]/20",
-  },
+
   {
     id: 1,
-    type: "important",
-    tag: "THIÊN CHIẾU",
-    title: "CẬP NHẬT PHIÊN BẢN 2.0: KỶ NGUYÊN RỒNG",
-    desc: "Cánh cổng dẫn đến vùng đất cổ đại đã mở. Tất cả lữ khách cần chuẩn bị trang bị trước khi khởi hành vào tuần tới.",
-    date: "Ngày 15, Tháng Gió",
-    icon: AlertTriangle,
-    color: "text-red-500",
-    border: "border-red-900/50",
-    bg: "bg-red-950/20",
-  },
-  {
-    id: 2,
     type: "news",
     tag: "TIN TỨC",
-    title: "Lễ hội Rượu Vang tại Thành Veridia",
-    desc: "Vụ mùa năm nay bội thu. Thị trưởng thông báo sẽ tổ chức tiệc chiêu đãi toàn bộ cư dân tại quảng trường trung tâm.",
-    date: "Ngày 12, Tháng Gió",
+    title: "Video Xây Dựng Mới Được Phát Hành",
+    desc: "Ao Cá của Genja đã được xây xong, mời mọi người tham quan và xem video ở rạp phim",
+    date: "Ngày 7, Tháng 4",
     icon: Megaphone,
     color: "text-[#60a5fa]",
     border: "border-[#2d435a]",
     bg: "bg-[#1e2a3a]/30",
   },
-  {
-    id: 3,
-    type: "classified",
-    tag: "RAO VẶT",
-    title: "Tìm kiếm Thợ Rèn Bậc Thầy",
-    desc: "Cần rèn lại thanh kiếm gãy từ tàn tích quỷ dữ. Phần thưởng: 500 vàng và một viên ngọc lục bảo.",
-    date: "Ngày 10, Tháng Gió",
-    icon: Hammer,
-    color: "text-[#4ade80]",
-    border: "border-[#2d5a2d]",
-    bg: "bg-[#1e3a1e]/20",
-  },
+
 ];
 
 export const NewsContent = ({ data }: { data: Building }) => {

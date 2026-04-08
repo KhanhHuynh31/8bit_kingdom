@@ -126,7 +126,7 @@ export async function GET() {
           durationSec: sec,
           views: extra?.views ?? '0',
           publishedAt: item.publishedAt,
-          isShort: sec > 0 && sec <= 60,
+          isShort: sec > 0 && sec <= 120,
         };
       })
       // Mới nhất lên trước

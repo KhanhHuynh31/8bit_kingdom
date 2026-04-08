@@ -32,7 +32,7 @@ const MAIN_BUILDINGS: Building[] = [
     name: "Bảo tàng",
     description:
       "Nơi trưng bày những mảnh vỡ ký ức và cổ vật từ thời sơ khai của vương quốc. Mỗi hiện vật đều mang một sức mạnh tiềm ẩn.",
-    worldX: 2,
+    worldX: -5,
     worldY: 3,
     width: 3,
     height: 3,
@@ -58,7 +58,7 @@ const MAIN_BUILDINGS: Building[] = [
     name: "Ngân hàng",
     description:
       "Trung tâm tài chính sầm uất, nơi quản lý kho báu và giao dịch các đồng tiền vàng quý hiếm của toàn bộ cư dân.",
-    worldX: -10,
+    worldX: 1,
     worldY: 3,
     width: 4,
     height: 3,
@@ -66,65 +66,27 @@ const MAIN_BUILDINGS: Building[] = [
     imageSrc: "/assets/buildings/bank.png",
     interactive: true,
   },
-  {
-    id: "fame",
-    name: "Sảnh danh vọng",
-    description:
-      "Bức tường vinh danh những chiến binh và cộng sự đã có đóng góp to lớn cho sự hưng thịnh của vương quốc.",
-    worldX: -5,
-    worldY: 3,
-    width: 3,
-    height: 3,
-    type: "main",
-    imageSrc: "/assets/buildings/fame.png",
-    interactive: true,
-  },
+
   {
     id: "library",
     name: "Thư viện",
     description:
       "Kho tàng tri thức khổng lồ với những cuốn sách phép thuật và bản đồ cổ dẫn lối đến các vùng đất chưa từng được biết tới.",
-    worldX: -8,
-    worldY: -1,
+    worldX: -10,
+    worldY: 3,
     width: 4,
     height: 3,
     type: "main",
     imageSrc: "/assets/buildings/library.png",
     interactive: true,
   },
-  {
-    id: "mailbox",
-    name: "Hòm thư",
-    description:
-      "Cầu nối liên lạc giữa các vùng đất xa xôi. Những lá thư tay mang theo tâm tình và cả những mật báo quan trọng.",
-    worldX: -12,
-    worldY: -1,
-    width: 3,
-    height: 3,
-    type: "main",
-    imageSrc: "/assets/buildings/mailbox.png",
-    interactive: true,
-  },
 
-  {
-    id: "property",
-    name: "Sàn giao dịch",
-    description:
-      "Cầu nối liên lạc giữa các vùng đất xa xôi. Những lá thư tay mang theo tâm tình và cả những mật báo quan trọng.",
-    worldX: 10,
-    worldY: 3,
-    width: 3,
-    height: 3,
-    type: "main",
-    imageSrc: "/assets/buildings/property.png",
-    interactive: true,
-  },
   {
     id: "news",
     name: "Bảng tin",
     description:
       "Cầu nối liên lạc giữa các vùng đất xa xôi. Những lá thư tay mang theo tâm tình và cả những mật báo quan trọng.",
-    worldX: 8,
+    worldX: -7,
     worldY: -1,
     width: 3,
     height: 3,
@@ -132,7 +94,46 @@ const MAIN_BUILDINGS: Building[] = [
     imageSrc: "/assets/buildings/news.png",
     interactive: true,
   },
- 
+  // {
+  //   id: "mailbox",
+  //   name: "Hòm thư",
+  //   description:
+  //     "Cầu nối liên lạc giữa các vùng đất xa xôi. Những lá thư tay mang theo tâm tình và cả những mật báo quan trọng.",
+  //   worldX: -12,
+  //   worldY: -1,
+  //   width: 3,
+  //   height: 3,
+  //   type: "main",
+  //   imageSrc: "/assets/buildings/mailbox.png",
+  //   interactive: true,
+  // },
+
+  // {
+  //   id: "property",
+  //   name: "Sàn giao dịch",
+  //   description:
+  //     "Cầu nối liên lạc giữa các vùng đất xa xôi. Những lá thư tay mang theo tâm tình và cả những mật báo quan trọng.",
+  //   worldX: 10,
+  //   worldY: 3,
+  //   width: 3,
+  //   height: 3,
+  //   type: "main",
+  //   imageSrc: "/assets/buildings/property.png",
+  //   interactive: true,
+  // },
+  // {
+  //   id: "fame",
+  //   name: "Sảnh danh vọng",
+  //   description:
+  //     "Bức tường vinh danh những chiến binh và cộng sự đã có đóng góp to lớn cho sự hưng thịnh của vương quốc.",
+  //   worldX: -5,
+  //   worldY: 3,
+  //   width: 3,
+  //   height: 3,
+  //   type: "main",
+  //   imageSrc: "/assets/buildings/fame.png",
+  //   interactive: true,
+  // },
 ];
 
 // --- TỔNG HỢP TẤT CẢ ---
