@@ -61,15 +61,15 @@ export const SECONDARY_BUILDINGS: Building[] = [
     imageSrc: "/assets/decorate/tuna.png",
     // hidden: true -- KHÔNG đặt ở đây, handled bởi tunaVisible trong store
   },
-   {
+  {
     id: "trophy",
     name: "Cúp vô địch",
     description:
       "Nơi thư giãn và tái tạo năng lượng cho các cư dân vương quốc.",
-    worldX: 12,
+    worldX: 11,
     worldY: -7,
-    width: 2,
-    height: 2,
+    width: 3,
+    height: 3,
     zIndex: 0,
 
     type: "secondary",
@@ -78,7 +78,7 @@ export const SECONDARY_BUILDINGS: Building[] = [
   },
   {
     id: "t1",
-    name: "Ez Game",
+    name: "GG",
     description:
       "Sinh vật huyền thoại sống trong bể bơi, chỉ xuất hiện khi có sự kiện đặc biệt. Người ta đồn rằng tuna",
     worldX: 10, // nằm trong pool (giữa pool theo X)

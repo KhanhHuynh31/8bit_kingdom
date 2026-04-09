@@ -55,7 +55,12 @@ function hitTest(
     if (hiddenIds.has(id)) continue;
     const b = buildingMap.get(id);
     if (!b) continue;
-    if (wx >= b.worldX && wx <= b.worldX + b.width && wy >= b.worldY && wy <= b.worldY + b.height) {
+    if (
+      wx >= b.worldX &&
+      wx <= b.worldX + b.width &&
+      wy >= b.worldY &&
+      wy <= b.worldY + b.height
+    ) {
       if (!best || (b.zIndex ?? 0) > (best.zIndex ?? 0)) best = b;
     }
   }
@@ -98,12 +103,11 @@ export default function WorldMap({
   const t1WorldX = useMapStore((s) => s.t1WorldX);
   const t1WorldY = useMapStore((s) => s.t1WorldY);
   const trophyVisible = useMapStore((s) => s.trophyVisible);
+  const mergedVisible = useMapStore((s) => s.mergedVisible);
 
   // State để hiển thị tên tạm thời cho secondary building
   const [clickedSecondary, setClickedSecondary] = useState<{ id: string; name: string } | null>(null);
 
-
-  // Hàm hiển thị tên tạm thời
   const showTempName = useCallback((id: string, name: string) => {
     setClickedSecondary({ id, name });
     setTimeout(() => setClickedSecondary(null), 2000);
@@ -128,11 +132,8 @@ export default function WorldMap({
 
   const { onPointerDown, onPointerMove: onDragMove, onPointerUp } = useMapDrag(canvasRef);
 
-  // Đồng bộ camera ref
-  useEffect(() => {
-    cameraRef.current = camera;
-  }, [camera]);
-
+  // Đồng bộ refs
+  useEffect(() => { cameraRef.current = camera; }, [camera]);
   useEffect(() => {
     statusRef.current = status;
     weatherRef.current = weather;
@@ -140,18 +141,23 @@ export default function WorldMap({
 
   // Subscribe tuna state
   useEffect(() => {
-    const unsubVisible = useMapStore.subscribe((state) => { tunaVisibleRef.current = state.tunaVisible; });
-    const unsubOffset = useMapStore.subscribe((state) => { tunaAnimOffsetYRef.current = state.tunaAnimOffsetY; });
-    const unsubAnim = useMapStore.subscribe((state) => { tunaAnimatingRef.current = state.tunaAnimating; });
-    const unsubDiving = useMapStore.subscribe((state) => { tunaDivingRef.current = state.tunaDiving; });
-    const unsubProgress = useMapStore.subscribe((state) => { tunaProgressRef.current = state.tunaProgress; });
-    return () => {
-      unsubVisible(); unsubOffset(); unsubAnim(); unsubDiving(); unsubProgress();
-    };
+    const unsubVisible  = useMapStore.subscribe((s) => { tunaVisibleRef.current     = s.tunaVisible; });
+    const unsubOffset   = useMapStore.subscribe((s) => { tunaAnimOffsetYRef.current  = s.tunaAnimOffsetY; });
+    const unsubAnim     = useMapStore.subscribe((s) => { tunaAnimatingRef.current    = s.tunaAnimating; });
+    const unsubDiving   = useMapStore.subscribe((s) => { tunaDivingRef.current       = s.tunaDiving; });
+    const unsubProgress = useMapStore.subscribe((s) => { tunaProgressRef.current     = s.tunaProgress; });
+    return () => { unsubVisible(); unsubOffset(); unsubAnim(); unsubDiving(); unsubProgress(); };
   }, []);
 
-  // Tạo danh sách buildings động dựa trên BUILDINGS tĩnh và state từ store
+  // Tạo danh sách buildings động:
+  // - t1: theo t1Visible/t1WorldX/t1WorldY
+  // - trophy: khi mergedVisible → đổi imageSrc thành ảnh merged, đổi name thành T1,
+  //           giữ interactive:true để hover/click hoạt động bình thường
+  //           khi trophyVisible false (đang animate) → ẩn đi
   const dynamicBuildings = useMemo((): Building[] => {
+    // Lấy tên T1 từ BUILDINGS gốc
+    const t1StaticName = BUILDINGS.find((b) => b.id === "t1")?.name ?? "T1";
+
     return BUILDINGS.map((b) => {
       if (b.id === "t1") {
         return {
@@ -161,15 +167,28 @@ export default function WorldMap({
           interactive: t1Visible,
         };
       }
+
       if (b.id === "trophy") {
+        if (mergedVisible) {
+          // Trophy trở thành ảnh merged, tên hiển thị là tên T1
+          return {
+            ...b,
+            imageSrc: "/assets/decorate/t1_trophy_merged.png",
+            name: t1StaticName,
+            interactive: true,
+            // Giữ nguyên type "secondary" để showTempName khi click
+            type: "secondary",
+          };
+        }
         return {
           ...b,
           interactive: trophyVisible,
         };
       }
+
       return b;
     });
-  }, [t1Visible, t1WorldX, t1WorldY, trophyVisible]);
+  }, [t1Visible, t1WorldX, t1WorldY, trophyVisible, mergedVisible]);
 
   // Spatial index từ dynamicBuildings
   const { spatialGrid, buildingMap } = useMemo(() => {
@@ -217,10 +236,7 @@ export default function WorldMap({
     const observer = new ResizeObserver((entries) => {
       const { width, height } = entries[0].contentRect;
       const canvas = canvasRef.current;
-      if (canvas) {
-        canvas.width = width;
-        canvas.height = height;
-      }
+      if (canvas) { canvas.width = width; canvas.height = height; }
       dimensionsRef.current = { width, height };
       setDimensions({ width, height });
     });
@@ -228,7 +244,7 @@ export default function WorldMap({
     return () => observer.disconnect();
   }, []);
 
-  // RAF loop: cập nhật animation t1 và render
+  // RAF loop
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -259,15 +275,13 @@ export default function WorldMap({
           weatherRef.current,
           tunaState,
           dynamicBuildings,
-          clickedSecondary, // Truyền clickedSecondary vào renderMap
+          clickedSecondary,
         );
       }
       animRef.current = requestAnimationFrame(loop);
     };
     animRef.current = requestAnimationFrame(loop);
-    return () => {
-      if (animRef.current) cancelAnimationFrame(animRef.current);
-    };
+    return () => { if (animRef.current) cancelAnimationFrame(animRef.current); };
   }, [dynamicBuildings, updateT1Animation, clickedSecondary]);
 
   // Wheel zoom
@@ -275,7 +289,10 @@ export default function WorldMap({
     (e: WheelEvent) => {
       e.preventDefault();
       const delta = e.deltaY > 0 ? -0.1 : 0.1;
-      const newZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, parseFloat((cameraRef.current.zoom + delta).toFixed(1))));
+      const newZoom = Math.min(
+        MAX_ZOOM,
+        Math.max(MIN_ZOOM, parseFloat((cameraRef.current.zoom + delta).toFixed(1))),
+      );
       setZoom(newZoom);
     },
     [setZoom],
@@ -320,13 +337,17 @@ export default function WorldMap({
       }
 
       if (clickedId === "trophy") {
-        if (!trophyVisible) return;
-        if (!t1Visible) {
-          showT1LeftOfTrophy();
-        } else {
-          startT1MoveAcrossTrophy();
+        // Khi mergedVisible, trophy đã đổi thành secondary → xử lý showTempName bên dưới
+        // Khi chưa merged → xử lý animation T1
+        if (!mergedVisible) {
+          if (!trophyVisible) return;
+          if (!t1Visible) {
+            showT1LeftOfTrophy();
+          } else {
+            startT1MoveAcrossTrophy();
+          }
+          return;
         }
-        return;
       }
 
       if (clickedId === "tuna") {
@@ -334,18 +355,23 @@ export default function WorldMap({
         return;
       }
 
-      // Các building khác
+      // Tất cả building còn lại (bao gồm trophy khi mergedVisible vì type="secondary")
       const building = buildingMap.get(clickedId);
       if (building && building.interactive) {
         if (building.type === "secondary") {
-          // Hiển thị tên tạm thời trên đầu building
           showTempName(building.id, building.name);
         } else {
           useMapStore.getState().selectBuilding(building);
         }
       }
     },
-    [spatialGrid, buildingMap, animateTuna, sinkTuna, toggleTunaInfo, showT1LeftOfTrophy, startT1MoveAcrossTrophy, t1Visible, trophyVisible, showTempName],
+    [
+      spatialGrid, buildingMap,
+      animateTuna, sinkTuna, toggleTunaInfo,
+      showT1LeftOfTrophy, startT1MoveAcrossTrophy,
+      t1Visible, trophyVisible, mergedVisible,
+      showTempName,
+    ],
   );
 
   return (
@@ -378,8 +404,6 @@ export default function WorldMap({
           height={dimensions.height}
         />
       </div>
-
- 
 
       <LightSystem
         camera={camera}

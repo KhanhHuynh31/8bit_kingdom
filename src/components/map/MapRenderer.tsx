@@ -106,12 +106,8 @@ function drawFogOfWar(
       visionRadius = sTile * 4 + flicker;
     }
     const grad = fctx.createRadialGradient(
-      centerX,
-      centerY,
-      0,
-      centerX,
-      centerY,
-      visionRadius,
+      centerX, centerY, 0,
+      centerX, centerY, visionRadius,
     );
     grad.addColorStop(0, "rgba(255,255,255,1)");
     grad.addColorStop(0.5, "rgba(255,255,255,0.6)");
@@ -144,8 +140,7 @@ function drawBackground(
     const x = Math.floor(cX + cam.offsetX + col * sTile);
     for (let row = startRow; row <= endRow; row++) {
       const y = Math.floor(cY + cam.offsetY + row * sTile);
-      ctx.fillStyle =
-        GLOBAL_COLORS.grass[Math.abs(col + row) % 2 === 0 ? 1 : 0];
+      ctx.fillStyle = GLOBAL_COLORS.grass[Math.abs(col + row) % 2 === 0 ? 1 : 0];
       ctx.fillRect(x, y, tileW, tileW);
     }
   }
@@ -229,17 +224,7 @@ export function renderMap(
 
   entries.sort((a, b) => (a.b.zIndex ?? 0) - (b.b.zIndex ?? 0));
   const visibleBuildings = entries.map((e) => e.b);
-  drawFogOfWar(
-    ctx,
-    camera,
-    width,
-    height,
-    sTile,
-    cX,
-    cY,
-    time,
-    visibleBuildings,
-  );
+  drawFogOfWar(ctx, camera, width, height, sTile, cX, cY, time, visibleBuildings);
 
   for (const { b, renderWorldY } of entries) {
     const { x, y } = worldToScreen(b.worldX, renderWorldY, camera, cX, cY);
@@ -276,19 +261,12 @@ export function renderMap(
         torchStates[b.id] = { alpha: isDarkTime ? 1 : 0, userPreference: null };
       }
       const state = torchStates[b.id];
-      const isOn =
-        state.userPreference !== null ? state.userPreference : isDarkTime;
+      const isOn = state.userPreference !== null ? state.userPreference : isDarkTime;
       state.alpha += ((isOn ? 1 : 0) - state.alpha) * (isOn ? 0.08 : 0.15);
       if (state.alpha > 0.01) {
         const flicker = Math.sin(time / 100) * 2;
         const size = (5 + flicker) * camera.zoom * state.alpha;
-        drawTorchEffect(
-          ctx,
-          x + bW / 2 + offsetX,
-          y + offsetY,
-          size,
-          state.alpha,
-        );
+        drawTorchEffect(ctx, x + bW / 2 + offsetX, y + offsetY, size, state.alpha);
       }
     }
   }
@@ -297,13 +275,7 @@ export function renderMap(
   if (clickedSecondary && clickedSecondary.id) {
     const building = buildings.find((b) => b.id === clickedSecondary.id);
     if (building) {
-      const { x, y } = worldToScreen(
-        building.worldX,
-        building.worldY,
-        camera,
-        cX,
-        cY,
-      );
+      const { x, y } = worldToScreen(building.worldX, building.worldY, camera, cX, cY);
       const bW = building.width * sTile;
 
       ctx.save();
