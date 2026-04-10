@@ -99,7 +99,7 @@ const MAIN_BUILDINGS: Building[] = [
     name: "Trang trại",
     description:
       "Nơi trồng trọt và chăn nuôi, cung cấp nguồn thực phẩm cho cư dân vương quốc.",
-    worldX: 3,
+    worldX: 2,
     worldY: -8,
     width: 8,
     height: 6,
