@@ -94,46 +94,19 @@ const MAIN_BUILDINGS: Building[] = [
     imageSrc: "/assets/buildings/news.png",
     interactive: true,
   },
-  // {
-  //   id: "mailbox",
-  //   name: "Hòm thư",
-  //   description:
-  //     "Cầu nối liên lạc giữa các vùng đất xa xôi. Những lá thư tay mang theo tâm tình và cả những mật báo quan trọng.",
-  //   worldX: -12,
-  //   worldY: -1,
-  //   width: 3,
-  //   height: 3,
-  //   type: "main",
-  //   imageSrc: "/assets/buildings/mailbox.png",
-  //   interactive: true,
-  // },
-
-  // {
-  //   id: "property",
-  //   name: "Sàn giao dịch",
-  //   description:
-  //     "Cầu nối liên lạc giữa các vùng đất xa xôi. Những lá thư tay mang theo tâm tình và cả những mật báo quan trọng.",
-  //   worldX: 10,
-  //   worldY: 3,
-  //   width: 3,
-  //   height: 3,
-  //   type: "main",
-  //   imageSrc: "/assets/buildings/property.png",
-  //   interactive: true,
-  // },
-  // {
-  //   id: "fame",
-  //   name: "Sảnh danh vọng",
-  //   description:
-  //     "Bức tường vinh danh những chiến binh và cộng sự đã có đóng góp to lớn cho sự hưng thịnh của vương quốc.",
-  //   worldX: -5,
-  //   worldY: 3,
-  //   width: 3,
-  //   height: 3,
-  //   type: "main",
-  //   imageSrc: "/assets/buildings/fame.png",
-  //   interactive: true,
-  // },
+   {
+    id: "farm",
+    name: "Trang trại",
+    description:
+      "Nơi trồng trọt và chăn nuôi, cung cấp nguồn thực phẩm cho cư dân vương quốc.",
+    worldX: 3,
+    worldY: -8,
+    width: 8,
+    height: 6,
+    type: "secondary",
+    imageSrc: "",
+    interactive: true,
+  },
 ];
 
 // --- TỔNG HỢP TẤT CẢ ---

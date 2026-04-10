@@ -5,14 +5,16 @@ import { createBuildingSlice } from "./slices/buildingSlice";
 import { createYoutubeSlice } from "./slices/youtubeSlice";
 import { createTunaSlice } from "./slices/tunaSlice";
 import { createT1Slice } from "./slices/t1Slice";
+import { createFarmSlice } from "./slices/farmSlice";
 
 export const useMapStore = create<MapState>()(
   persist(
     (set, get, store) => ({
-      ...createBuildingSlice(set, get, store) as MapState,
-      ...createYoutubeSlice(set, get, store) as MapState,
-      ...createTunaSlice(set, get, store) as MapState,
-      ...createT1Slice(set, get, store) as MapState,
+      ...(createBuildingSlice(set, get, store) as MapState),
+      ...(createYoutubeSlice(set, get, store) as MapState),
+      ...(createTunaSlice(set, get, store) as MapState),
+      ...(createT1Slice(set, get, store) as MapState),
+      ...(createFarmSlice(set, get, store) as MapState), // ← THÊM
     }),
     {
       name: "map-storage",
@@ -22,9 +24,11 @@ export const useMapStore = create<MapState>()(
         unlockedMemories: state.unlockedMemories,
         ytStats: state.ytStats,
         tunaProgress: state.tunaProgress,
+        // ── Farm persist ──
+        farmPlots: state.farmPlots,         // ← THÊM (lưu trạng thái cây)
       }),
-    }
-  )
+    },
+  ),
 );
 
 // --- Selectors ---

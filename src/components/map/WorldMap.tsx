@@ -20,6 +20,7 @@ import HUD from "@/components/ui/HUD";
 import InfoModal from "@/components/ui/InfoModal";
 import CoordDisplay from "./overplay/CoordDisplay";
 import LightSystem from "./overplay/LightSystem";
+import FarmOverlay from "../farm/FarmOverlay";
 
 const WorldOverlay = dynamic(() => import("../map/overplay/WorldOverplay"), {
   ssr: false,
@@ -330,6 +331,11 @@ export default function WorldMap({
           onClick={handleCanvasClick}
         />
         <WorldOverlay
+          camera={camera}
+          width={dimensions.width}
+          height={dimensions.height}
+        />
+        <FarmOverlay
           camera={camera}
           width={dimensions.width}
           height={dimensions.height}

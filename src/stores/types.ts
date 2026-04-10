@@ -1,3 +1,5 @@
+import { FarmState } from "./slices/farmSlice";
+
 export interface Building {
   id: string;
   name: string;
@@ -94,8 +96,7 @@ export interface T1AppearAnimation {
   duration: number;
 }
 
-export interface MapState {
-  // Building & General
+export interface MapState extends FarmState {  // Building & General
   camera: Camera;
   selectedBuilding: Building | null;
   avocados: number;
