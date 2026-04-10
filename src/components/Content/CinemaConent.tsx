@@ -1,6 +1,6 @@
 "use client";
 
-import { Building } from "@/types";
+import { Building } from "@/stores/types";
 import Image from "next/image";
 import { useState, useEffect, useCallback } from "react";
 import {

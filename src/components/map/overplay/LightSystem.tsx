@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef } from "react";
 import { worldToScreen } from "@/utils/coords";
-import { Building, Camera } from "@/types";
+import { Building, Camera } from "@/stores/types";
 import { torchStates } from "@/utils/torchManager";
 
 interface LightSystemProps {

@@ -1,13 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Building } from "@/types";
+import { Building } from "@/stores/types";
 import {
   useMapStore,
   selectYtStats,
   selectTotalEnergy,
   selectIsLoading,
-} from "@/stores/mapStore";
+} from "@/stores/useMapStore";
 import {
   ReceiptText,
   HandHeart,

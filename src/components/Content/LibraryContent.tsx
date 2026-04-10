@@ -1,6 +1,6 @@
 "use client";
 
-import { Building } from "@/types";
+import { Building } from "@/stores/types";
 import {
   Book,
   Scroll,

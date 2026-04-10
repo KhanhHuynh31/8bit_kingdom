@@ -6,7 +6,7 @@ import {
   Calendar,
   Sparkles,
 } from "lucide-react";
-import { Building } from "@/types";
+import { Building } from "@/stores/types";
 export const newsList = [
 
   {

@@ -1,7 +1,7 @@
 import { useCallback, useRef, useEffect } from 'react'
-import { useMapStore } from '@/stores/mapStore'
+import { useMapStore } from '@/stores/useMapStore'
 import { storage } from '@/utils/storage'
-import type { Camera } from '@/types'
+import { Camera } from '@/stores/types'
 
 const STORAGE_KEY = '8bitkingdom_camera'
 

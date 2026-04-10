@@ -1,6 +1,6 @@
 'use client'
 
-import { useMapStore } from '@/stores/mapStore'
+import { useMapStore } from '@/stores/useMapStore'
 
 export default function CoordDisplay() {
   const { camera } = useMapStore()

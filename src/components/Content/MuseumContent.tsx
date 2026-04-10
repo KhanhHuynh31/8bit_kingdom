@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { useMapStore } from "@/stores/mapStore";
+import { useMapStore } from "@/stores/useMapStore";
 import {
   Trophy,
   History,
@@ -17,7 +17,7 @@ import {
   Lock,
   Unlock,
 } from "lucide-react";
-import { Building } from "@/types";
+import { Building } from "@/stores/types";
 
 // ── CONFIGURATION ──────────────────────────────────────────────────────────
 

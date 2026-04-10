@@ -1,4 +1,4 @@
-import { Building } from "@/types";
+import { Building } from "@/stores/types";
 import { 
   Mail, 
   Send, 

@@ -1,5 +1,5 @@
 // app/api/youtube/route.ts
-import { YOUTUBE_CHANNEL_ID } from "@/stores/mapStore";
+import { YOUTUBE_CHANNEL_ID } from "@/stores/types";
 import { NextResponse } from "next/server";
 
 // ─── Cấu hình ────────────────────────────────────────────────────────────────

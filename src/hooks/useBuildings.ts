@@ -1,8 +1,8 @@
 import { useCallback } from 'react'
 import { BUILDINGS } from '@/constants/map'
-import { useMapStore } from '@/stores/mapStore'
+import { useMapStore } from '@/stores/useMapStore'
 import { screenToWorld } from '@/utils/coords'
-import type { Camera } from '@/types'
+import type { Camera } from '@/stores/types'
 
 export function useBuildings() {
   const { selectBuilding } = useMapStore()

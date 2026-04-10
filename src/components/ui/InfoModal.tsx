@@ -1,9 +1,9 @@
 "use client";
 
-import { useMapStore } from "@/stores/mapStore";
+import { useMapStore } from "@/stores/useMapStore";
 import { useEffect } from "react";
 import dynamic from "next/dynamic";
-import { Building } from "@/types";
+import { Building } from "@/stores/types";
 
 
 // 2. Cấu hình Dynamic Imports cho từng Component

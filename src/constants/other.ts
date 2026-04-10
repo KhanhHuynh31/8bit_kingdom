@@ -1,4 +1,4 @@
-import { Building } from "@/types";
+import { Building } from "@/stores/types";
 
 // --- 2. NHÓM TRANG TRÍ & PHỤ TRỢ (SECONDARY) ---
 export const SECONDARY_BUILDINGS: Building[] = [

@@ -1,10 +1,10 @@
 "use client";
 
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
-import { useMapStore, selectSelectedBuilding } from "@/stores/mapStore";
+import { useMapStore, selectSelectedBuilding } from "@/stores/useMapStore";
 import { worldToScreen } from "@/utils/coords";
 import { BUILDINGS, TILE_SIZE } from "@/constants/map";
-import { Camera, Building } from "@/types"; // Đảm bảo Building đã được export từ types
+import { Camera, Building } from "@/stores/types"; // Đảm bảo Building đã được export từ types
 import { toggleTorch } from "@/utils/torchManager";
 import { Megaphone, MessageCircle, Utensils } from "lucide-react";
 import { newsList } from "@/components/Content/NewsContent";

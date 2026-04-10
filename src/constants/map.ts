@@ -1,4 +1,4 @@
-import type { Building } from "@/types";
+import { Building } from "@/stores/types";
 import {
   DEFENSE_BUILDINGS,
   SECONDARY_BUILDINGS,

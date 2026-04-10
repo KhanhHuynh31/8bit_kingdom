@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { TimeStatus, WeatherType } from "@/hooks/useTimeCycle";
-import { useMapStore } from "@/stores/mapStore";
+import { useMapStore } from "@/stores/useMapStore";
 import { MIN_ZOOM, MAX_ZOOM } from "@/constants/map";
 import {
   Sun,

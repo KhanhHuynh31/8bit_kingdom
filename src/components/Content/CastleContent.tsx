@@ -1,6 +1,6 @@
 "use client";
 
-import { Building } from "@/types";
+import { Building } from "@/stores/types";
 import Image from "next/image";
 import {
   Play,
@@ -16,7 +16,7 @@ import {
   ShieldCheck,
   ChevronRight,
 } from "lucide-react";
-import { selectTotalEnergy, useMapStore } from "@/stores/mapStore";
+import { selectTotalEnergy, useMapStore } from "@/stores/useMapStore";
 
 export const CastleContent = ({ data }: { data: Building }) => {
   const subscribers = useMapStore((state) => state.ytStats.subscribers);

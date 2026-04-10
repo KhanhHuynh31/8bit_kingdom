@@ -1,5 +1,5 @@
 import { TILE_SIZE } from '@/constants/map'
-import type { Camera } from '@/types'
+import type { Camera } from '@/stores/types'
 
 /** Chuyển tọa độ thế giới (tile) sang pixel màn hình */
 export function worldToScreen(

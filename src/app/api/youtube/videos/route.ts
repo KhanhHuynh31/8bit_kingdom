@@ -1,4 +1,4 @@
-import { YOUTUBE_CHANNEL_ID } from '@/stores/mapStore';
+import { YOUTUBE_CHANNEL_ID } from "@/stores/types";
 import { NextResponse } from 'next/server';
 
 const BASE = 'https://www.googleapis.com/youtube/v3';
