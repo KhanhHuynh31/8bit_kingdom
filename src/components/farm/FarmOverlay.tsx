@@ -27,23 +27,23 @@ import { Sprout, Droplets, Wheat, X } from "lucide-react";
 // ─── Ảnh cây theo 3 giai đoạn ────────────────────────────────────────────────
 // Đặt ảnh vào /public/assets/farm/
 const PLANT_IMAGES: Record<"seeded" | "watered" | "ready", string> = {
-  seeded:  "/assets/farm/avocado_seeded.png",
+  seeded: "/assets/farm/avocado_seeded.png",
   watered: "/assets/farm/avocado_growing.png",
-  ready:   "/assets/farm/avocado_ready.png",
+  ready: "/assets/farm/avocado_ready.png",
 };
 
 // ─── Màu ô đất ───────────────────────────────────────────────────────────────
 const PLOT_BG: Record<PlotStatus, string> = {
-  empty:   "rgba(38,24,10,0.82)",
-  seeded:  "rgba(22,36,16,0.88)",
+  empty: "rgba(38,24,10,0.82)",
+  seeded: "rgba(22,36,16,0.88)",
   watered: "rgba(16,32,48,0.88)",
-  ready:   "rgba(14,36,14,0.92)",
+  ready: "rgba(14,36,14,0.92)",
 };
 const PLOT_BORDER: Record<PlotStatus, string> = {
-  empty:   "rgba(90,58,24,0.55)",
-  seeded:  "rgba(72,108,56,0.65)",
+  empty: "rgba(90,58,24,0.55)",
+  seeded: "rgba(72,108,56,0.65)",
   watered: "rgba(48,120,180,0.75)",
-  ready:   "rgba(56,200,80,0.9)",
+  ready: "rgba(56,200,80,0.9)",
 };
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -51,7 +51,11 @@ const PLOT_BORDER: Record<PlotStatus, string> = {
 type RainRect = { x: number; y: number; w: number; h: number };
 
 interface Raindrop {
-  x: number; y: number; speed: number; len: number; alpha: number;
+  x: number;
+  y: number;
+  speed: number;
+  len: number;
+  alpha: number;
 }
 
 // ─── Rain Canvas hook ─────────────────────────────────────────────────────────
@@ -61,7 +65,7 @@ function useRainCanvas(
   activeRects: RainRect[],
 ) {
   const dropsRef = useRef<Raindrop[]>([]);
-  const rafRef   = useRef<number>(0);
+  const rafRef = useRef<number>(0);
   const rectsRef = useRef<RainRect[]>([]);
 
   // Sync mutable ref để RAF loop luôn đọc giá trị mới nhất
@@ -88,10 +92,10 @@ function useRainCanvas(
     activeRects.forEach((r) => {
       for (let i = 0; i < 60; i++) {
         dropsRef.current.push({
-          x:     r.x + Math.random() * r.w,
-          y:     r.y - Math.random() * r.h,
+          x: r.x + Math.random() * r.w,
+          y: r.y - Math.random() * r.h,
           speed: 4 + Math.random() * 5,
-          len:   8 + Math.random() * 10,
+          len: 8 + Math.random() * 10,
           alpha: 0.4 + Math.random() * 0.5,
         });
       }
@@ -143,7 +147,11 @@ function useRainCanvas(
 // ─── PlotCell ─────────────────────────────────────────────────────────────────
 
 function PlotCell({
-  plot, cellW, cellH, selected, onClick,
+  plot,
+  cellW,
+  cellH,
+  selected,
+  onClick,
 }: {
   plot: FarmPlot;
   cellW: number;
@@ -152,29 +160,34 @@ function PlotCell({
   onClick: () => void;
 }) {
   const imgSrc =
-    plot.status === "empty"   ? null
-    : plot.status === "seeded"  ? PLANT_IMAGES.seeded
-    : plot.status === "watered" ? PLANT_IMAGES.watered
-    : PLANT_IMAGES.ready;
+    plot.status === "empty"
+      ? null
+      : plot.status === "seeded"
+        ? PLANT_IMAGES.seeded
+        : plot.status === "watered"
+          ? PLANT_IMAGES.watered
+          : PLANT_IMAGES.ready;
 
   const isReady = plot.status === "ready";
-  const imgH    = Math.round(cellH * (
-    plot.status === "ready"   ? 0.76 :
-    plot.status === "watered" ? 0.60 : 0.42
-  ));
+  const imgH = Math.round(
+    cellH *
+      (plot.status === "ready" ? 0.76 : plot.status === "watered" ? 0.6 : 0.42),
+  );
 
   return (
     <div
       onClick={onClick}
       style={{
-        width: cellW, height: cellH,
+        width: cellW,
+        height: cellH,
         background: PLOT_BG[plot.status],
         border: `1.5px solid ${selected ? "#60a5fa" : PLOT_BORDER[plot.status]}`,
         borderRadius: 5,
         boxShadow: selected
           ? "0 0 0 2px rgba(96,165,250,0.4)"
-          : isReady ? "0 0 14px rgba(56,200,80,0.4)"
-          : "none",
+          : isReady
+            ? "0 0 14px rgba(56,200,80,0.4)"
+            : "none",
         cursor: "pointer",
         position: "relative",
         overflow: "hidden",
@@ -187,19 +200,14 @@ function PlotCell({
         <Image
           src={imgSrc}
           alt=""
-          width={imgH}
-          height={imgH}
           unoptimized
           draggable={false}
+          fill
           style={{
             position: "absolute",
             bottom: Math.round(cellH * 0.07),
             left: "50%",
             transform: "translateX(-50%)",
-            height: imgH,
-            width: "auto",
-            imageRendering: "pixelated",
-            objectFit: "contain",
             animation: isReady ? "farmPulse 1.8s ease-in-out infinite" : "none",
           }}
         />
@@ -207,29 +215,50 @@ function PlotCell({
 
       {/* Progress bar (chỉ khi đang lớn) */}
       {plot.status === "watered" && (
-        <div style={{
-          position: "absolute", bottom: 3, left: 5, right: 5,
-          height: 3, background: "rgba(255,255,255,0.1)", borderRadius: 2, overflow: "hidden",
-        }}>
-          <div style={{
-            height: "100%", width: `${plot.progress}%`,
-            background: "#34d399", borderRadius: 2,
-            transition: "width 0.5s linear",
-          }} />
+        <div
+          style={{
+            position: "absolute",
+            bottom: 3,
+            left: 5,
+            right: 5,
+            height: 3,
+            background: "rgba(255,255,255,0.1)",
+            borderRadius: 2,
+            overflow: "hidden",
+          }}
+        >
+          <div
+            style={{
+              height: "100%",
+              width: `${plot.progress}%`,
+              background: "#34d399",
+              borderRadius: 2,
+              transition: "width 0.5s linear",
+            }}
+          />
         </div>
       )}
 
       {/* Badge ✓ khi ready */}
       {isReady && (
-        <div style={{
-          position: "absolute", top: 4, left: "50%", transform: "translateX(-50%)",
-          background: "rgba(20,80,20,0.9)",
-          border: "1px solid rgba(80,220,80,0.6)",
-          borderRadius: 4, padding: "1px 6px",
-          fontSize: Math.max(8, Math.round(cellW * 0.11)),
-          color: "#6ee7b7", fontWeight: 700, lineHeight: 1.4,
-          whiteSpace: "nowrap", pointerEvents: "none",
-        }}>
+        <div
+          style={{
+            position: "absolute",
+            top: 4,
+            left: "50%",
+            transform: "translateX(-50%)",
+            background: "rgba(20,80,20,0.9)",
+            border: "1px solid rgba(80,220,80,0.6)",
+            borderRadius: 4,
+            padding: "1px 6px",
+            fontSize: Math.max(8, Math.round(cellW * 0.11)),
+            color: "#6ee7b7",
+            fontWeight: 700,
+            lineHeight: 1.4,
+            whiteSpace: "nowrap",
+            pointerEvents: "none",
+          }}
+        >
           ✓
         </div>
       )}
@@ -240,8 +269,14 @@ function PlotCell({
 // ─── Popup hành động ──────────────────────────────────────────────────────────
 
 function PlotPopup({
-  plot, screenX, screenY, cellW,
-  onSeed, onWater, onHarvest, onClose,
+  plot,
+  screenX,
+  screenY,
+  cellW,
+  onSeed,
+  onWater,
+  onHarvest,
+  onClose,
 }: {
   plot: FarmPlot;
   screenX: number;
@@ -255,41 +290,63 @@ function PlotPopup({
   const POPUP_W = 170;
 
   const label: Record<PlotStatus, string> = {
-    empty:   "Đất trống",
-    seeded:  "Cây con 🌱",
+    empty: "Đất trống",
+    seeded: "Cây con 🌱",
     watered: `Đang lớn… ${plot.progress}%`,
-    ready:   "Sẵn thu hoạch! 🥑",
+    ready: "Sẵn thu hoạch! 🥑",
   };
   const labelColor: Record<PlotStatus, string> = {
-    empty:   "#9ca3af",
-    seeded:  "#86efac",
+    empty: "#9ca3af",
+    seeded: "#86efac",
     watered: "#60a5fa",
-    ready:   "#fbbf24",
+    ready: "#fbbf24",
   };
 
   return (
-    <div style={{
-      position: "absolute",
-      left: screenX + cellW / 2 - POPUP_W / 2,
-      top: screenY - 10,
-      width: POPUP_W,
-      transform: "translateY(-100%)",
-      background: "rgba(8,14,8,0.97)",
-      border: "1px solid rgba(80,140,60,0.5)",
-      borderRadius: 10,
-      padding: "10px 10px 8px",
-      boxShadow: "0 8px 32px rgba(0,0,0,0.7)",
-      pointerEvents: "auto",
-      zIndex: 300,
-    }}>
+    <div
+      style={{
+        position: "absolute",
+        left: screenX + cellW / 2 - POPUP_W / 2,
+        top: screenY - 10,
+        width: POPUP_W,
+        transform: "translateY(-100%)",
+        background: "rgba(8,14,8,0.97)",
+        border: "1px solid rgba(80,140,60,0.5)",
+        borderRadius: 10,
+        padding: "10px 10px 8px",
+        boxShadow: "0 8px 32px rgba(0,0,0,0.7)",
+        pointerEvents: "auto",
+        zIndex: 300,
+      }}
+    >
       {/* Header */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-        <span style={{ fontSize: 11, fontWeight: 700, color: labelColor[plot.status] }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: 8,
+        }}
+      >
+        <span
+          style={{
+            fontSize: 11,
+            fontWeight: 700,
+            color: labelColor[plot.status],
+          }}
+        >
           {label[plot.status]}
         </span>
         <button
           onClick={onClose}
-          style={{ background: "none", border: "none", cursor: "pointer", color: "#6b7280", display: "flex", padding: 0 }}
+          style={{
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+            color: "#6b7280",
+            display: "flex",
+            padding: 0,
+          }}
         >
           <X size={12} />
         </button>
@@ -297,8 +354,24 @@ function PlotPopup({
 
       {/* Progress bar khi đang lớn */}
       {plot.status === "watered" && (
-        <div style={{ marginBottom: 8, height: 3, background: "rgba(255,255,255,0.1)", borderRadius: 2, overflow: "hidden" }}>
-          <div style={{ height: "100%", width: `${plot.progress}%`, background: "#34d399", borderRadius: 2, transition: "width 0.4s linear" }} />
+        <div
+          style={{
+            marginBottom: 8,
+            height: 3,
+            background: "rgba(255,255,255,0.1)",
+            borderRadius: 2,
+            overflow: "hidden",
+          }}
+        >
+          <div
+            style={{
+              height: "100%",
+              width: `${plot.progress}%`,
+              background: "#34d399",
+              borderRadius: 2,
+              transition: "width 0.4s linear",
+            }}
+          />
         </div>
       )}
 
@@ -322,39 +395,66 @@ function PlotPopup({
       </div>
 
       {/* Arrow xuống */}
-      <div style={{
-        position: "absolute", bottom: -6, left: "50%",
-        transform: "translateX(-50%)",
-        width: 0, height: 0,
-        borderLeft: "6px solid transparent",
-        borderRight: "6px solid transparent",
-        borderTop: "6px solid rgba(80,140,60,0.5)",
-      }} />
+      <div
+        style={{
+          position: "absolute",
+          bottom: -6,
+          left: "50%",
+          transform: "translateX(-50%)",
+          width: 0,
+          height: 0,
+          borderLeft: "6px solid transparent",
+          borderRight: "6px solid transparent",
+          borderTop: "6px solid rgba(80,140,60,0.5)",
+        }}
+      />
     </div>
   );
 }
 
 function Btn({
-  color, onClick, children,
+  color,
+  onClick,
+  children,
 }: {
   color: "green" | "blue" | "amber";
   onClick: () => void;
   children: React.ReactNode;
 }) {
   const s = {
-    green: { bg: "rgba(16,50,16,0.8)",  border: "rgba(60,180,60,0.55)",  fg: "#86efac" },
-    blue:  { bg: "rgba(14,36,70,0.8)",  border: "rgba(60,120,220,0.55)", fg: "#93c5fd" },
-    amber: { bg: "rgba(50,36,8,0.8)",   border: "rgba(200,150,30,0.55)", fg: "#fbbf24" },
+    green: {
+      bg: "rgba(16,50,16,0.8)",
+      border: "rgba(60,180,60,0.55)",
+      fg: "#86efac",
+    },
+    blue: {
+      bg: "rgba(14,36,70,0.8)",
+      border: "rgba(60,120,220,0.55)",
+      fg: "#93c5fd",
+    },
+    amber: {
+      bg: "rgba(50,36,8,0.8)",
+      border: "rgba(200,150,30,0.55)",
+      fg: "#fbbf24",
+    },
   }[color];
   return (
     <button
       onClick={onClick}
       style={{
-        display: "flex", alignItems: "center", justifyContent: "center", gap: 5,
-        padding: "6px 8px", borderRadius: 6, width: "100%",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 5,
+        padding: "6px 8px",
+        borderRadius: 6,
+        width: "100%",
         border: `1px solid ${s.border}`,
-        background: s.bg, color: s.fg,
-        fontSize: 11, fontWeight: 600, cursor: "pointer",
+        background: s.bg,
+        color: s.fg,
+        fontSize: 11,
+        fontWeight: 600,
+        cursor: "pointer",
       }}
     >
       {children}
@@ -365,7 +465,9 @@ function Btn({
 // ─── Toast hook ───────────────────────────────────────────────────────────────
 
 function useToast() {
-  const t   = useRef<ReturnType<typeof setTimeout>>(undefined as unknown as ReturnType<typeof setTimeout>);
+  const t = useRef<ReturnType<typeof setTimeout>>(
+    undefined as unknown as ReturnType<typeof setTimeout>,
+  );
   const [msg, setMsg] = useState<string | null>(null);
   const show = useCallback((text: string) => {
     setMsg(text);
@@ -383,17 +485,18 @@ export interface FarmOverlayProps {
   height: number;
 }
 
-export default function FarmOverlay({ camera, width, height }: FarmOverlayProps) {
-  const {
-    farmPlots,
-    seedPlot, waterPlot, harvestPlot,
-    tickFarmProgress,
-  } = useMapStore();
+export default function FarmOverlay({
+  camera,
+  width,
+  height,
+}: FarmOverlayProps) {
+  const { farmPlots, seedPlot, waterPlot, harvestPlot, tickFarmProgress } =
+    useMapStore();
 
-  const rainCanvasRef  = useRef<HTMLCanvasElement | null>(null);
+  const rainCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const progressRafRef = useRef<number>(0);
   const [selectedPlotId, setSelectedPlotId] = useState<number | null>(null);
-  const { msg: toast, show: showToast }     = useToast();
+  const { msg: toast, show: showToast } = useToast();
 
   const dims = useMemo(() => computeFarmDimensions(), []);
 
@@ -412,24 +515,28 @@ export default function FarmOverlay({ camera, width, height }: FarmOverlayProps)
   }, [tickFarmProgress]);
 
   // ── Coordinate math ───────────────────────────────────────────────────────
-  const cX         = width / 2;
-  const cY         = height / 2;
+  const cX = width / 2;
+  const cY = height / 2;
   const scaledTile = TILE_SIZE * camera.zoom;
 
   const { x: bScreenX, y: bScreenY } = worldToScreen(
-    dims.originX, dims.originY, camera, cX, cY,
+    dims.originX,
+    dims.originY,
+    camera,
+    cX,
+    cY,
   );
-  const bScreenW = dims.buildingWidth  * scaledTile;
+  const bScreenW = dims.buildingWidth * scaledTile;
   const bScreenH = dims.buildingHeight * scaledTile;
 
   // Mỗi ô = 2×2 tiles
-  const GAP   = Math.max(2, Math.round(scaledTile * 0.06));
+  const GAP = Math.max(2, Math.round(scaledTile * 0.06));
   const cellW = 2 * scaledTile - GAP;
   const cellH = 2 * scaledTile - GAP;
 
   // Grid căn giữa trong building
-  const gridW  = dims.cols * cellW + (dims.cols - 1) * GAP;
-  const gridH  = dims.rows * cellH + (dims.rows - 1) * GAP;
+  const gridW = dims.cols * cellW + (dims.cols - 1) * GAP;
+  const gridH = dims.rows * cellH + (dims.rows - 1) * GAP;
   const gridOX = (bScreenW - gridW) / 2;
   const gridOY = (bScreenH - gridH) / 2;
 
@@ -449,7 +556,17 @@ export default function FarmOverlay({ camera, width, height }: FarmOverlayProps)
         w: cellW,
         h: cellH,
       }));
-  }, [farmPlots, nowTick, bScreenX, bScreenY, gridOX, gridOY, cellW, cellH, GAP]);
+  }, [
+    farmPlots,
+    nowTick,
+    bScreenX,
+    bScreenY,
+    gridOX,
+    gridOY,
+    cellW,
+    cellH,
+    GAP,
+  ]);
 
   useRainCanvas(rainCanvasRef, rainRects);
 
@@ -457,7 +574,7 @@ export default function FarmOverlay({ camera, width, height }: FarmOverlayProps)
   useEffect(() => {
     const c = rainCanvasRef.current;
     if (!c) return;
-    c.width  = width;
+    c.width = width;
     c.height = height;
   }, [width, height]);
 
@@ -466,28 +583,40 @@ export default function FarmOverlay({ camera, width, height }: FarmOverlayProps)
     setSelectedPlotId((prev) => (prev === id ? null : id));
   }, []);
 
-  const doSeed = useCallback((id: number) => {
-    seedPlot(id);
-    showToast("🌱 Đã trồng cây bơ!");
-    setSelectedPlotId(null);
-  }, [seedPlot, showToast]);
+  const doSeed = useCallback(
+    (id: number) => {
+      seedPlot(id);
+      showToast("🌱 Đã trồng cây bơ!");
+      setSelectedPlotId(null);
+    },
+    [seedPlot, showToast],
+  );
 
-  const doWater = useCallback((id: number) => {
-    waterPlot(id);
-    showToast("💧 Đang tưới nước…");
-    setSelectedPlotId(null);
-  }, [waterPlot, showToast]);
+  const doWater = useCallback(
+    (id: number) => {
+      waterPlot(id);
+      showToast("💧 Đang tưới nước…");
+      setSelectedPlotId(null);
+    },
+    [waterPlot, showToast],
+  );
 
-  const doHarvest = useCallback((id: number) => {
-    harvestPlot(id);
-    showToast("+200 🥑 Thu hoạch bơ!");
-    setSelectedPlotId(null);
-  }, [harvestPlot, showToast]);
+  const doHarvest = useCallback(
+    (id: number) => {
+      harvestPlot(id);
+      showToast("+200 🥑 Thu hoạch bơ!");
+      setSelectedPlotId(null);
+    },
+    [harvestPlot, showToast],
+  );
 
-  const plotPos = useCallback((p: FarmPlot) => ({
-    x: bScreenX + gridOX + p.col * (cellW + GAP),
-    y: bScreenY + gridOY + p.row * (cellH + GAP),
-  }), [bScreenX, bScreenY, gridOX, gridOY, cellW, cellH, GAP]);
+  const plotPos = useCallback(
+    (p: FarmPlot) => ({
+      x: bScreenX + gridOX + p.col * (cellW + GAP),
+      y: bScreenY + gridOY + p.row * (cellH + GAP),
+    }),
+    [bScreenX, bScreenY, gridOX, gridOY, cellW, cellH, GAP],
+  );
 
   if (width === 0 || height === 0) return null;
 
@@ -503,7 +632,12 @@ export default function FarmOverlay({ camera, width, height }: FarmOverlayProps)
       {/* Rain canvas */}
       <canvas
         ref={rainCanvasRef}
-        style={{ position: "absolute", inset: 0, pointerEvents: "none", zIndex: 160 }}
+        style={{
+          position: "absolute",
+          inset: 0,
+          pointerEvents: "none",
+          zIndex: 160,
+        }}
       />
 
       {/* Overlay */}
@@ -516,10 +650,10 @@ export default function FarmOverlay({ camera, width, height }: FarmOverlayProps)
           style={{
             position: "absolute",
             left: bScreenX + gridOX,
-            top:  bScreenY + gridOY,
+            top: bScreenY + gridOY,
             display: "grid",
             gridTemplateColumns: `repeat(${dims.cols}, ${cellW}px)`,
-            gridTemplateRows:    `repeat(${dims.rows}, ${cellH}px)`,
+            gridTemplateRows: `repeat(${dims.rows}, ${cellH}px)`,
             gap: GAP,
             pointerEvents: "auto",
           }}
@@ -537,39 +671,46 @@ export default function FarmOverlay({ camera, width, height }: FarmOverlayProps)
         </div>
 
         {/* ── Popup hành động ── */}
-        {selectedPlotId !== null && (() => {
-          const plot = farmPlots[selectedPlotId];
-          if (!plot) return null;
-          const pos  = plotPos(plot);
-          return (
-            <PlotPopup
-              plot={plot}
-              screenX={pos.x}
-              screenY={pos.y}
-              cellW={cellW}
-              onSeed={() => doSeed(plot.id)}
-              onWater={() => doWater(plot.id)}
-              onHarvest={() => doHarvest(plot.id)}
-              onClose={() => setSelectedPlotId(null)}
-            />
-          );
-        })()}
+        {selectedPlotId !== null &&
+          (() => {
+            const plot = farmPlots[selectedPlotId];
+            if (!plot) return null;
+            const pos = plotPos(plot);
+            return (
+              <PlotPopup
+                plot={plot}
+                screenX={pos.x}
+                screenY={pos.y}
+                cellW={cellW}
+                onSeed={() => doSeed(plot.id)}
+                onWater={() => doWater(plot.id)}
+                onHarvest={() => doHarvest(plot.id)}
+                onClose={() => setSelectedPlotId(null)}
+              />
+            );
+          })()}
 
         {/* ── Toast ── */}
         {toast && (
-          <div style={{
-            position: "absolute",
-            left: bScreenX + bScreenW / 2,
-            top: Math.max(8, bScreenY - 70),
-            transform: "translateX(-50%)",
-            background: "rgba(6,16,6,0.97)",
-            border: "1px solid rgba(72,180,60,0.55)",
-            borderRadius: 8, padding: "6px 16px",
-            fontSize: 12, fontWeight: 600, color: "#d1fae5",
-            pointerEvents: "none", whiteSpace: "nowrap",
-            boxShadow: "0 4px 20px rgba(0,0,0,0.6)",
-            zIndex: 400,
-          }}>
+          <div
+            style={{
+              position: "absolute",
+              left: bScreenX + bScreenW / 2,
+              top: Math.max(8, bScreenY - 70),
+              transform: "translateX(-50%)",
+              background: "rgba(6,16,6,0.97)",
+              border: "1px solid rgba(72,180,60,0.55)",
+              borderRadius: 8,
+              padding: "6px 16px",
+              fontSize: 12,
+              fontWeight: 600,
+              color: "#d1fae5",
+              pointerEvents: "none",
+              whiteSpace: "nowrap",
+              boxShadow: "0 4px 20px rgba(0,0,0,0.6)",
+              zIndex: 400,
+            }}
+          >
             {toast}
           </div>
         )}
