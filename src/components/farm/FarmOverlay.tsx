@@ -1,16 +1,5 @@
 "use client";
 
-/**
- * FarmOverlay — phiên bản cuối
- * ─────────────────────────────
- * • Ô đất LUÔN hiện trên map, không có menu ẩn/hiện.
- * • Click ô đất → popup hành động (trồng / tưới / thu hoạch).
- * • Tưới nước MIỄN PHÍ, không tốn tài nguyên.
- * • Không có cuốc bỏ, không có mua nước.
- * • Animation mưa canvas khi tưới (3 giây).
- * • Cây hiển thị bằng ảnh PNG 3 giai đoạn.
- */
-
 import { useEffect, useRef, useCallback, useState, useMemo } from "react";
 import Image from "next/image";
 import { useMapStore } from "@/stores/useMapStore";
@@ -169,10 +158,6 @@ function PlotCell({
           : PLANT_IMAGES.ready;
 
   const isReady = plot.status === "ready";
-  const imgH = Math.round(
-    cellH *
-      (plot.status === "ready" ? 0.76 : plot.status === "watered" ? 0.6 : 0.42),
-  );
 
   return (
     <div

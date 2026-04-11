@@ -99,6 +99,11 @@ export default function WorldOverlay({
       const actionKey = `${building.id}-${building.clickedAt}`;
       if (processedClickRef.current === actionKey) return;
       processedClickRef.current = actionKey;
+      // ── Gacha gate ────────────────────────────────────
+      if (building.id === "summoning_gate") {
+        useMapStore.getState().openGacha();
+        return;
+      }
       // 1. Xử lý News
       if (building.id === "news" && latestNews) {
         const idStr = String(latestNews.id);

@@ -6,6 +6,7 @@ import { createYoutubeSlice } from "./slices/youtubeSlice";
 import { createTunaSlice } from "./slices/tunaSlice";
 import { createT1Slice } from "./slices/t1Slice";
 import { createFarmSlice } from "./slices/farmSlice";
+import { createGachaSlice } from "./slices/gachaSlice";
 
 export const useMapStore = create<MapState>()(
   persist(
@@ -15,6 +16,7 @@ export const useMapStore = create<MapState>()(
       ...(createTunaSlice(set, get, store) as MapState),
       ...(createT1Slice(set, get, store) as MapState),
       ...(createFarmSlice(set, get, store) as MapState), // ← THÊM
+      ...(createGachaSlice(set, get, store) as MapState), // ← THÊM
     }),
     {
       name: "map-storage",
@@ -25,7 +27,11 @@ export const useMapStore = create<MapState>()(
         ytStats: state.ytStats,
         tunaProgress: state.tunaProgress,
         // ── Farm persist ──
-        farmPlots: state.farmPlots,         // ← THÊM (lưu trạng thái cây)
+        farmPlots: state.farmPlots, // ← THÊM (lưu trạng thái cây)
+        // ── Gacha persist ──
+        gachaHistory: state.gachaHistory, // ← THÊM
+        gachaCollection: state.gachaCollection, // ← THÊM
+        gachaTotalPulls: state.gachaTotalPulls, // ← THÊM
       }),
     },
   ),
@@ -55,7 +61,11 @@ export const selectTrophyVisible = (s: MapState) => s.trophyVisible;
 export const selectT1Animation = (s: MapState) => s.t1Animation;
 export const selectT1AppearAnimation = (s: MapState) => s.t1AppearAnimation;
 export const selectMergedVisible = (s: MapState) => s.mergedVisible;
-
+// Thêm vào phần selectors ở cuối file
+export const selectGachaOpen = (s: MapState) => s.gachaOpen;
+export const selectGachaHistory = (s: MapState) => s.gachaHistory;
+export const selectGachaCollection = (s: MapState) => s.gachaCollection;
+export const selectGachaTotalPulls = (s: MapState) => s.gachaTotalPulls;
 // Computed State
 export const selectTotalEnergy = (s: MapState) =>
   s.ytStats.subscribers * 100 +

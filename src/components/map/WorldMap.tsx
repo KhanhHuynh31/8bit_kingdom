@@ -21,6 +21,7 @@ import InfoModal from "@/components/ui/InfoModal";
 import CoordDisplay from "./overplay/CoordDisplay";
 import LightSystem from "./overplay/LightSystem";
 import FarmOverlay from "../farm/FarmOverlay";
+import GachaOverlay from "../gacha/GachaOverPlay";
 
 const WorldOverlay = dynamic(() => import("../map/overplay/WorldOverplay"), {
   ssr: false,
@@ -336,6 +337,11 @@ export default function WorldMap({
           height={dimensions.height}
         />
         <FarmOverlay
+          camera={camera}
+          width={dimensions.width}
+          height={dimensions.height}
+        />
+        <GachaOverlay
           camera={camera}
           width={dimensions.width}
           height={dimensions.height}

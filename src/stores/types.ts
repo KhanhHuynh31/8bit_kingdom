@@ -1,4 +1,5 @@
 import { FarmState } from "./slices/farmSlice";
+import { GachaState } from "./slices/gachaSlice";
 
 export interface Building {
   id: string;
@@ -96,7 +97,9 @@ export interface T1AppearAnimation {
   duration: number;
 }
 
-export interface MapState extends FarmState {  // Building & General
+export interface MapState extends FarmState, GachaState {
+  // ← THÊM
+  // Building & General
   camera: Camera;
   selectedBuilding: Building | null;
   avocados: number;

@@ -94,7 +94,7 @@ const MAIN_BUILDINGS: Building[] = [
     imageSrc: "/assets/buildings/news.png",
     interactive: true,
   },
-   {
+  {
     id: "farm",
     name: "Trang trại",
     description:
@@ -106,6 +106,19 @@ const MAIN_BUILDINGS: Building[] = [
     type: "secondary",
     imageSrc: "",
     interactive: true,
+  },
+  {
+    id: "summoning_gate",
+    name: "Cổng Triệu Hồi",
+    description: "Cổng kết nối với thế giới khác, nơi triệu hồi các anh hùng.",
+    worldX: -12, // ← điều chỉnh vị trí cho phù hợp với map của bạn
+    worldY: -1,
+    width: 4,
+    height: 3,
+    type: "decoration",
+    imageSrc: "/assets/decorate/gate.png",
+    interactive: true,
+    zIndex: 6,
   },
 ];
 
