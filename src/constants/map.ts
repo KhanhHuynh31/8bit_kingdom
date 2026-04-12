@@ -100,7 +100,7 @@ const MAIN_BUILDINGS: Building[] = [
     description:
       "Nơi trồng trọt và chăn nuôi, cung cấp nguồn thực phẩm cho cư dân vương quốc.",
     worldX: 2,
-    worldY: -8,
+    worldY: -17,
     width: 8,
     height: 6,
     type: "secondary",
@@ -111,8 +111,8 @@ const MAIN_BUILDINGS: Building[] = [
     id: "summoning_gate",
     name: "Cổng Triệu Hồi",
     description: "Cổng kết nối với thế giới khác, nơi triệu hồi các anh hùng.",
-    worldX: -12, // ← điều chỉnh vị trí cho phù hợp với map của bạn
-    worldY: -1,
+    worldX: 5, // ← điều chỉnh vị trí cho phù hợp với map của bạn
+    worldY: -6,
     width: 3,
     height: 3,
     type: "decoration",
