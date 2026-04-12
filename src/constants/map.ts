@@ -113,7 +113,7 @@ const MAIN_BUILDINGS: Building[] = [
     description: "Cổng kết nối với thế giới khác, nơi triệu hồi các anh hùng.",
     worldX: -12, // ← điều chỉnh vị trí cho phù hợp với map của bạn
     worldY: -1,
-    width: 4,
+    width: 3,
     height: 3,
     type: "decoration",
     imageSrc: "/assets/decorate/gate.png",
