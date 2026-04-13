@@ -374,7 +374,7 @@ function PlotPopup({
         )}
         {plot.status === "ready" && (
           <Btn color="amber" onClick={onHarvest}>
-            <Wheat size={12} /> Thu hoạch (+200 🥑)
+            <Wheat size={12} /> Thu hoạch
           </Btn>
         )}
       </div>
@@ -589,7 +589,7 @@ export default function FarmOverlay({
   const doHarvest = useCallback(
     (id: number) => {
       harvestPlot(id);
-      showToast("+2000 🥑 Thu hoạch bơ!");
+      showToast("+2000🥑");
       setSelectedPlotId(null);
     },
     [harvestPlot, showToast],

@@ -196,7 +196,7 @@ export const BankContent = ({ data }: { data: Building }) => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="space-y-4">
           <div className="flex items-center gap-2 px-1 text-blue-400 uppercase text-[10px] tracking-[0.2em] font-bold">
-            <Play className="w-4 h-4 fill-current" /> Truyền linh khí
+            <Play className="w-4 h-4 fill-current" /> Truyền năng lượng
           </div>
           <div className="grid grid-cols-1 gap-2">
             <a
