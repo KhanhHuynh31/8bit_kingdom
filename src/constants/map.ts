@@ -17,7 +17,7 @@ const MAIN_BUILDINGS: Building[] = [
     id: "castle",
     name: "Lâu Đài Bơ",
     description:
-      "Thánh địa tối cao của vương quốc, nơi lưu giữ công thức chế biến bơ thần thánh và là nơi ngự trị của các vị vua Pixel.",
+      "Công trình tối quan trọng của vương quốc, lâu đài được xây dựng từ năng lượng của thần dân, tỏa sáng rực rỡ dưới ánh mặt trời.",
     worldX: -2,
     worldY: -2,
     width: 4,
@@ -57,7 +57,7 @@ const MAIN_BUILDINGS: Building[] = [
     id: "bank",
     name: "Ngân hàng",
     description:
-      "Trung tâm tài chính sầm uất, nơi quản lý kho báu và giao dịch các đồng tiền vàng quý hiếm của toàn bộ cư dân.",
+      "Trung tâm tài chính sầm uất, nơi quản lý kho báu và giao dịch các đồng tiền vàng quý hiếm của toàn bộ thần dân.",
     worldX: 1,
     worldY: 3,
     width: 4,
@@ -98,13 +98,13 @@ const MAIN_BUILDINGS: Building[] = [
     id: "farm",
     name: "Trang trại",
     description:
-      "Nơi trồng trọt và chăn nuôi, cung cấp nguồn thực phẩm cho cư dân vương quốc.",
+      "Nơi trồng trọt và chăn nuôi, cung cấp nguồn thực phẩm cho thần dân vương quốc.",
     worldX: 2,
     worldY: -17,
     width: 8,
     height: 6,
     type: "secondary",
-    imageSrc: "",
+    imageSrc: "/assets/farm/farm.png",
     interactive: true,
   },
   {

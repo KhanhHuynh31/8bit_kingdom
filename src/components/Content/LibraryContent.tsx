@@ -4,9 +4,6 @@ import { Building } from "@/stores/types";
 import {
   Book,
   Scroll,
-  Lightbulb,
-  Code2,
-  Gamepad2,
   ChevronRight,
   ChevronLeft,
   Bookmark,
@@ -16,129 +13,247 @@ import {
   Key,
   AlertCircle,
   LucideIcon,
+  Fish,
+  Trophy,
+  Castle,
+  Landmark,
+  Clapperboard,
+  Sprout,
+  TreeDeciduous,
+  Sparkles,
 } from "lucide-react";
 import { useState, useMemo } from "react";
+import { useMapStore } from "@/stores/useMapStore";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface BookData {
   id: string;
   title: string;
-  category: "Code" | "VTuber" | "Life";
+  category: "FanBuilt" | "MainBuilding" | "Mystery";
   description: string;
   pages: string[];
   color: string;
   icon: LucideIcon;
   isLocked?: boolean;
-  unlockCode?: string;
+  unlockCost?: number;
 }
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
 const CATEGORIES = [
-  { id: "all",    label: "Tất cả",   icon: Filter   },
-  { id: "Code",   label: "Lập trình", icon: Code2    },
-  { id: "VTuber", label: "VTuber",   icon: Gamepad2 },
-  { id: "Life",   label: "Mẹo vặt",  icon: Lightbulb },
+  { id: "all", label: "Tất cả", icon: Filter },
+  { id: "FanBuilt", label: "Xây theo Fan", icon: Sparkles },
+  { id: "MainBuilding", label: "Công trình chính", icon: Castle },
+  { id: "Mystery", label: "Bí ẩn vương quốc", icon: Lock },
 ] as const;
 
-const BOOKS: BookData[] = [
+interface BookInput {
+  id: string;
+  title: string;
+  category: "FanBuilt" | "MainBuilding" | "Mystery";
+  description: string;
+  pages: string[];
+  color: string;
+  icon: LucideIcon;
+  unlockCost?: number;
+}
+
+const BOOKS_DATA: BookInput[] = [
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 1. XÂY NHÀ THEO FAN
+  // ═══════════════════════════════════════════════════════════════════════════
   {
-    id: "prog-01",
-    title: "Cẩm Nang Ma Pháp Next.js",
-    category: "Code",
-    description: "Khám phá sức mạnh của App Router và Server Components.",
-    icon: Code2,
+    id: "tuna-pond",
+    title: "Ao cá Tuna huyền thoại",
+    category: "FanBuilt",
+    description: "Được xây dựng từ ý kiến của thần dân Genji - Nơi linh vật Tuna sinh sống và tiến hóa",
+    icon: Fish,
     color: "blue",
     pages: [
-      "Chương 1: Khởi đầu với App Router. Cấu trúc thư mục là xương sống của mọi ứng dụng hiện đại.",
-      "Chương 2: Server Components. Tối ưu hóa hiệu năng bằng cách giảm tải Client-side JS.",
-      "Chương 3: Deployment. Đưa sản phẩm của bạn ra ánh sáng với Vercel.",
+      "📜 CHƯƠNG 1: KHỞI NGUỒN\n\nThuở xa xưa, khi vương quốc Bơ còn non trẻ, một thần dân tên Genji đã có linh cảm về một sinh vật thần bí dưới đáy đại dương. Ngài đã tâu lên nhà vua: 'Muôn tâu, thần thấy trong giấc mơ có một loài cá mang linh khí của trái bơ, nếu được nuôi dưỡng bằng hạt bơ và tình yêu thương, nó sẽ trở thành linh vật hộ quốc!'",
+      "📜 CHƯƠNG 2: XÂY DỰNG AO THIÊNG\n\nVua Bơ đã lắng nghe và cho xây dựng Ao Cá Tuna ngay tại trung tâm vương quốc. Ao được lát bằng đá quý từ núi Bơ Cổ Thụ và nước từ suối nguồn sự sống. Người dân có thể đến cho Tuna ăn mỗi ngày, trò chuyện và chăm sóc nó. Mỗi hạt bơ cho ăn đều được ghi nhận như một hành động nuôi dưỡng linh hồn vương quốc.",
+      "📜 CHƯƠNG 3: TIẾN HÓA THẦN KỲ\n\nTruyền thuyết kể rằng khi Tuna ăn đủ 1000 hạt bơ, nó sẽ bước vào giai đoạn tiến hóa. Ánh hào quang bảy màu bao phủ khắp ao, và Tuna biến hình thành Long Ngư - sinh vật nửa cá nửa rồng, mang theo sức mạnh bảo hộ cho toàn vương quốc. Những ai chứng kiến khoảnh khắc đó sẽ được ban phước lành về may mắn và thịnh vượng.",
+      "📜 CHƯƠNG 4: LINH VẬT HỘ QUỐC\n\nNgày nay, Tuna - Long Ngư vẫn đang chờ đợi ngày được tiến hóa. Mỗi thần dân đều có thể ghé thăm ao, cho Tuna ăn và trò chuyện. Hãy cùng nhau góp nhặt hạt bơ để chứng kiến phép màu!",
     ],
   },
   {
-    id: "secret-01",
-    title: "Bí Truyền Cấm Thuật",
-    category: "Code",
-    description: "Cuốn sách bị phong ấn bởi cổ thuật. Chỉ dành cho người xứng đáng.",
-    icon: Lock,
-    isLocked: true,
-    unlockCode: "GEMINI2026",
+    id: "t1-cup",
+    title: "Cúp T1 - Đấu trường huyền thoại",
+    category: "FanBuilt",
+    description: "Món quà từ thần dân SleepyDragon - Cơ hội mời tuyển thủ chuyên nghiệp về vương quốc",
+    icon: Trophy,
     color: "red",
     pages: [
-      "Chúc mừng lữ khách! Bạn đã giải mã thành công phong ấn.",
-      "Bí mật tối thượng: 'Sáng tạo không nằm ở công cụ, mà nằm ở cách bạn giải quyết vấn đề'.",
-      "Hãy tiếp tục hành trình xây dựng vương quốc 8-bit của riêng mình!",
+      "📜 CHƯƠNG 1: LỜI THỈNH CẦU\n\nSleepyDragon - một chiến binh say mê thể thao điện tử - đã từng ước mơ được gặp thần tượng của mình. Ngài đã cống hiến cả gia tài để xây dựng chiếc Cúp T1 lần thứ 6, một bảo vật có khả năng kết nối với các tuyển thủ chuyên nghiệp trên khắp thế gian.",
+      "📜 CHƯƠNG 2: SỨC MẠNH CỦA CÚP\n\nChiếc cúp không chỉ là vật trang trí. Khi một thần dân tương tác với nó bằng cả trái tim, cúp sẽ phát ra ánh sáng xanh và mở ra cánh cổng kết nối. Vị tuyển thủ chuyên nghiệp được triệu hồi sẽ đến vương quốc, tham gia giao lưu và thi đấu với mọi người.",
+      "📜 CHƯƠNG 3: THÁCH THỨC VÀ VINH QUANG\n\nĐiều kỳ diệu nhất: Khi tuyển thủ xuất hiện, bất kỳ ai đối đầu với ngài trong các trận đấu hữu nghị đều có cơ hội chiến thắng một cách dễ dàng, như thể được chính cúp tiếp thêm sức mạnh. Đây là món quà mà SleepyDragon muốn dành tặng cho toàn thể vương quốc - niềm vui chiến thắng và sự kết nối với những huyền thoại.",
+      "📜 CHƯƠNG 4: NGHI THỨC TRIỆU HỒI\n\nHãy chạm vào cúp vào những đêm trăng tròn, thì cánh cổng sẽ mở rộng nhất. Tuyển thủ sẽ lưu lại vương quốc trong 7 ngày, sẵn sàng giao lưu, hướng dẫn và thi đấu cùng bất kỳ ai có lòng nhiệt thành!",
     ],
   },
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 2. CÔNG TRÌNH CHÍNH
+  // ═══════════════════════════════════════════════════════════════════════════
   {
-    id: "vt-01",
-    title: "Bí Truyền Trở Thành VTuber",
-    category: "VTuber",
-    description: "Từ một tấm ảnh tĩnh đến linh hồn sống động trên màn hình.",
-    icon: Gamepad2,
-    color: "purple",
-    pages: [
-      "Bước 1: Thiết kế Model. Hãy chọn phong cách đại diện cho tâm hồn của bạn.",
-      "Bước 2: Rigging với Live2D. Thổi hồn vào từng chuyển động mắt và miệng.",
-    ],
-  },
-  {
-    id: "life-01",
-    title: "Mẹo Vặt Sinh Tồn Thành Thị",
-    category: "Life",
-    description: "Làm sao để sống sót qua deadline và những ngày cuối tháng.",
-    icon: Lightbulb,
+    id: "avocado-castle",
+    title: "Lâu đài Bơ - Trái tim vương quốc",
+    category: "MainBuilding",
+    description: "Công trình vĩ đại nhất, nơi hội tụ linh khí của muôn loài trái cây",
+    icon: Castle,
     color: "amber",
     pages: [
-      "Mẹo 1: Quản lý thời gian Pomodoro. 25 phút tập trung, 5 phút nghỉ ngơi.",
-      "Mẹo 2: Nấu ăn nhanh gọn cho Dev.",
+      "📜 CHƯƠNG 1: KIẾN TRÚC THẦN THOẠI\n\nLâu đài Bơ được xây dựng từ khối đá cẩm thạch màu xanh ngọc, hình dáng như một quả bơ khổng lồ vươn lên trời cao. 7 tòa tháp tượng trưng cho 7 vị thần trái cây cổ đại, đỉnh tháp là những viên ngọc bơ lấp lánh dưới ánh mặt trời.",
+      "📜 CHƯƠNG 2: ĐẠI SẢNH HOÀNG GIA\n\nBên trong lâu đài là Đại sảnh Bơ - nơi diễn ra các buổi lễ trọng đại. Trần sảnh được trang trí bằng tranh khắc họa lịch sử vương quốc, từ thuở hồng hoang đến kỷ nguyên vàng son. Chiếc ngai vàng được chạm khắc hình những quả bơ vàng óng, nơi nhà vua ngự trị và ban phát lời chúc phúc.",
+      "📜 CHƯƠNG 3: THƯ VIỆN BÍ MẬT\n\nSâu dưới hầm lâu đài là thư viện cổ chứa hàng ngàn cuộn giấy ghi chép bí thuật. Chỉ những người có đủ 500 hạt bơ mới được bước vào, và ở đó họ có thể học được cách triệu hồi năng lượng từ các vì sao để gia tăng sức mạnh cho vương quốc.",
+      "📜 CHƯƠNG 4: LINH HỒN VƯƠNG QUỐC\n\nLâu đài Bơ không chỉ là nơi ở của hoàng gia, mà còn là trái tim điều khiển toàn bộ năng lượng của vương quốc. Khi năng lượng dồi dào, lâu đài sẽ phát sáng rực rỡ, báo hiệu một thời kỳ thịnh vượng sắp đến. Hãy chăm sóc lâu đài, và lâu đài sẽ chăm sóc bạn!",
+    ],
+  },
+  {
+    id: "you-bank",
+    title: "Ngân hàng You Bank - Kho bạc quốc gia",
+    category: "MainBuilding",
+    description: "Nơi cất giữ và sinh lời từ những hạt bơ quý giá",
+    icon: Landmark,
+    color: "blue",
+    pages: [
+      "📜 CHƯƠNG 1: KHỞI NGUỒN CỦA SỰ THỊNH VƯỢNG\n\nYou Bank được thành lập bởi thương nhân giàu nhất vương quốc - ngài You. Với mong muốn giúp thần dân bảo toàn và gia tăng tài sản, ngài đã cho xây dựng một ngân hàng ngay cạnh chợ trung tâm.",
+      "📜 CHƯƠNG 2: CƠ CHẾ KỲ DIỆU\n\nGửi hạt bơ vào You Bank, sau mỗi chu kỳ mặt trăng, số bơ của bạn sẽ tự động sinh lời thêm 5%. Nhiều thần dân đã trở nên giàu có chỉ sau một năm nhờ vào sức mạnh của lãi kép. Ngân hàng còn có tủ két sắt bằng vàng ròng, bảo vệ tài sản khỏi mọi thế lực hắc ám.",
+      "📜 CHƯƠNG 3: DỊCH VỤ ĐẶC BIỆT\n\nVới 1000 hạt bơ, bạn có thể mở tài khoản V.I.P, được hưởng lãi suất lên đến 10% và có cơ hội vay vốn để xây dựng công trình riêng. Ngân hàng còn tổ chức các buổi đấu giá bơ quý hiếm, nơi những hạt bơ ngàn năm được trao tay.",
+      "📜 CHƯƠNG 4: BẢO VỆ BỞI HỘ PHÁP\n\nYou Bank được bảo vệ bởi 3 con sư tử đá có phép thuật. Bất kỳ ai có ý định trộm cắp sẽ bị biến thành cây bơ trong 100 năm. Hãy yên tâm gửi gắm tài sản của bạn, vì You Bank là nơi an toàn nhất vương quốc!",
+    ],
+  },
+  {
+    id: "cinema",
+    title: "Rạp phim Bơwood - Nghệ thuật thứ bảy",
+    category: "MainBuilding",
+    description: "Nơi ước mơ được thêu dệt bằng ánh sáng và âm thanh",
+    icon: Clapperboard,
+    color: "purple",
+    pages: [
+      "📜 CHƯƠNG 1: KHÁT VỌNG ĐIỆN ẢNH\n\nNhận thấy tài năng kể chuyện của thần dân, Vua Bơ đã cho xây dựng một rạp chiếu phim hoành tráng. Bơwood nhanh chóng trở thành trung tâm văn hóa, nơi mỗi tuần đều có những bộ phim kể về hành trình của vương quốc được công chiếu.",
+      "📜 CHƯƠNG 2: PHÙ THỦY ÁNH SÁNG\n\nRạp phim có một bảo vật đặc biệt - Máy chiếu Huyền Thoại, có khả năng biến những câu chuyện trong sách thành hình ảnh sống động. Người xem có thể bước vào trong phim, tương tác với các nhân vật và trở thành một phần của câu chuyện. Cảm giác như đang sống trong một giấc mơ!",
+      "📜 CHƯƠNG 3: LIÊN HOAN PHIM HÀNG NĂM\n\nMỗi năm, Bơwood tổ chức liên hoan phim lớn nhất vương quốc. Giải thưởng 'Quả Bơ Vàng' được trao cho bộ phim xuất sắc nhất. Người chiến thắng không chỉ nhận 500 hạt bơ mà còn được khắc tượng tại Quảng trường Danh vọng, bất tử cùng lịch sử.",
+      "📜 CHƯƠNG 4: RẠP CHIẾU DƯỚI ÁNH TRĂNG\n\nVào đêm rằm, rạp mở cửa miễn phí cho tất cả thần dân. Ghế ngồi được làm từ mây, phim chiếu trên bầu trời đầy sao. Đây là khoảnh khắc thiêng liêng nhất, nơi mọi người quên đi muộn phiền và cùng nhau mơ về một tương lai tươi sáng hơn.",
+    ],
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 3. BÍ ẨN VƯƠNG QUỐC (Locked by Avocados)
+  // ═══════════════════════════════════════════════════════════════════════════
+  {
+    id: "planting-avocado",
+    title: "🌱 Bí ẩn 1: Trồng Bơ thu hoạch",
+    category: "Mystery",
+    description: "Từ một hạt bơ nhỏ bé, cả một khu rừng có thể được sinh sôi",
+    icon: Sprout,
+    color: "green",
+    unlockCost: 100,
+    pages: [
+      "🔮 KHÁM PHÁ BÍ MẬT\n\nBạn vừa mở khóa bí ẩn đầu tiên! Trong khu vườn cấm của vương quốc, có một mảnh đất màu mỡ đặc biệt. Nếu bạn gieo một hạt bơ xuống đó vào lúc bình minh, và tưới nước bằng năng lượng tinh thần của mình, chỉ sau 7 ngày, một cây bơ non sẽ mọc lên.",
+      "🔮 CHU KỲ THU HOẠCH\n\nCây bơ sẽ cho trái sau 30 ngày. Mỗi cây có thể cho từ 10 đến 50 hạt bơ tùy vào cách bạn chăm sóc. Hãy nói chuyện với cây mỗi ngày, hát cho cây nghe, và bạn sẽ được đền đáp xứng đáng. Nhiều thần dân đã trở thành triệu phú nhờ vào việc trồng bơ!",
+      "🔮 BÍ QUYẾT GIA TĂNG SẢN LƯỢNG\n\nSử dụng phân bón từ vỏ chuối và bã cà phê sẽ giúp cây ra trái sai hơn. Ngoài ra, nếu có từ 3 thần dân cùng chăm sóc một cây, sản lượng có thể tăng gấp đôi. Hãy rủ bạn bè đến cùng trồng bơ nhé!",
+    ],
+  },
+  {
+    id: "ancient-tree",
+    title: "🌳 Bí ẩn 2: Thu hoạch từ cây cổ thụ",
+    category: "Mystery",
+    description: "Cây bơ cổ thụ - chứng nhân ngàn năm của vương quốc",
+    icon: TreeDeciduous,
+    color: "green",
+    unlockCost: 500,
+    pages: [
+      "🔮 CÂY CỔ THỤ THIÊNG LIÊNG\n\nSâu trong khu rừng cấm, có một cây bơ đã sống hơn 1000 năm. Thân cây to đến mức 10 người ôm không xuể. Rễ cây ăn sâu vào lòng đất, kết nối với mạch nguồn năng lượng của toàn vương quốc.",
+      "🔮 NGHI THỨC THU HOẠCH\n\nCây cổ thụ chỉ ra trái vào đêm trăng tròn mỗi tháng một lần. Để thu hoạch, bạn cần mang theo 50 hạt bơ làm lễ vật và đọc thần chú: 'Bơ ơi, bơ hỡi, xin rơi xuống đây, để xây vương quốc, đời đời ấm no.' Ngay sau đó, những quả bơ vàng óng sẽ lần lượt rụng xuống.",
+      "🔮 PHẦN THƯỞNG TỪ CỔ THỤ\n\nMỗi lần thu hoạch, bạn có thể nhận từ 200 đến 1000 hạt bơ. Đặc biệt, có 1% cơ hội nhận được 'Bơ Vàng Huyền Thoại' - loại bơ có thể đổi lấy bất kỳ vật phẩm nào trong vương quốc, kể cả việc mở khóa ngay lập tức một công trình mà không cần chờ đợi.",
+      "🔮 TRUYỀN THUYẾT VỀ NGƯỜI BẢO VỆ\n\nCây cổ thụ có một người bảo vệ vô hình - linh hồn của vị vua đầu tiên. Nếu bạn thu hoạch với lòng tham, bạn sẽ nhận lại quả bơ thối và bị cấm túc trong 30 ngày. Hãy luôn thành kính và biết ơn!",
+    ],
+  },
+  {
+    id: "seed-mystery",
+    title: "🗝️ Bí ẩn 3: Hạt Bơ mở khóa bí mật",
+    category: "Mystery",
+    description: "Những cánh cổng bí ẩn chỉ mở ra khi có đủ hạt bơ",
+    icon: Key,
+    color: "red",
+    unlockCost: 1000,
+    pages: [
+      "🔑 CÁNH CỔNG THỜI GIAN\n\nSâu dưới hầm Lâu đài Bơ, có một cánh cổng bằng đá bazan đen, trên đó chạm khắc hình một quả bơ khổng lồ. Xung quanh có 7 ổ khóa nhỏ. Truyền thuyết kể rằng nếu bạn bỏ đủ 1000 hạt bơ vào 7 ổ khóa đó, cánh cổng sẽ mở ra, đưa bạn đến một chiều không gian khác - nơi thời gian trôi chậm hơn gấp 10 lần.",
+      "🔑 VÙNG ĐẤT THỜI GIAN\n\nBên trong cánh cổng là một thung lũng bí mật. Ở đó, 1 ngày trôi qua tương đương với 10 ngày bên ngoài. Bạn có thể học tập, rèn luyện và xây dựng với tốc độ nhanh gấp bội. Nhiều pháp sư vĩ đại đã trở nên bất tử nhờ phát hiện ra nơi này. Nhưng hãy cẩn thận: ra vào quá nhiều có thể khiến bạn bị lạc trong dòng chảy thời gian!",
+      "🔑 NHỮNG BÍ MẬT KHÁC\n\nNgoài cánh cổng thời gian, hạt bơ còn có thể mở khóa: Rương kho báu dưới đáy Ao Tuna (200 bơ), Cánh cổng vào thư viện cấm (500 bơ), và Bí mật về công thức nấu ăn của các vị thần (1500 bơ). Mỗi bí mật đều mở ra một thế giới mới đầy bất ngờ!",
+      "🔑 LỜI KHUYÊN TỪ NHÀ HIỀN TRIẾT\n\nĐừng tiêu xài hết tất cả hạt bơ bạn có. Hãy dành ra một phần để dự phòng cho những bí ẩn lớn hơn. Vương quốc Bơ vẫn còn hàng ngàn điều kỳ diệu chưa được khám phá, và hạt bơ chính là chìa khóa vạn năng mở ra mọi cánh cửa!",
     ],
   },
 ];
 
-// ─── Color maps ───────────────────────────────────────────────────────────────
-const BOOK_COLORS: Record<string, { border: string; icon: string; glow: string }> = {
-  blue:   { border: "#3a5a8a", icon: "#7aaad4", glow: "rgba(80,140,220,0.25)" },
-  red:    { border: "#7a2a1a", icon: "#c07060", glow: "rgba(180,60,40,0.25)"  },
-  purple: { border: "#5a3a7a", icon: "#a07ac0", glow: "rgba(120,60,180,0.25)" },
-  amber:  { border: "#7a5a1a", icon: "#c8a040", glow: "rgba(200,160,60,0.25)" },
+// ─── Helper để kiểm tra unlock dựa trên số bơ ─────────────────────────────────
+const isBookUnlocked = (book: BookInput, avocados: number): boolean => {
+  if (book.category !== "Mystery") return true;
+  return avocados >= (book.unlockCost ?? 0);
 };
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-const bookColor = (color: string) => BOOK_COLORS[color] ?? BOOK_COLORS.amber;
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export const LibraryContent = ({ data }: { data: Building }) => {
-  const [activeTab, setActiveTab]       = useState<string>("all");
+  const [activeTab, setActiveTab] = useState<string>("all");
   const [selectedBook, setSelectedBook] = useState<BookData | null>(null);
-  const [inputCode, setInputCode]       = useState("");
-  const [isUnlocked, setIsUnlocked]     = useState(false);
-  const [error, setError]               = useState(false);
-  const [currentPage, setCurrentPage]   = useState(0);
+  const [error, setError] = useState(false);
+  const [currentPage, setCurrentPage] = useState(0);
+
+  // Lấy số bơ từ store
+  const avocados = useMapStore((state) => state.avocados);
+
+  // Xây dựng danh sách sách với trạng thái khóa dựa trên số bơ
+  const BOOKS: BookData[] = BOOKS_DATA.map((book) => ({
+    id: book.id,
+    title: book.title,
+    category: book.category,
+    description: book.description,
+    pages: book.pages,
+    color: book.color,
+    icon: book.icon,
+    unlockCost: book.unlockCost,
+    isLocked: book.category === "Mystery" && !isBookUnlocked(book, avocados),
+  }));
 
   const filteredBooks = useMemo(() => {
     if (activeTab === "all") return BOOKS;
     return BOOKS.filter((b) => b.category === activeTab);
-  }, [activeTab]);
+  }, [activeTab, BOOKS]);
 
   const handleOpenBook = (book: BookData) => {
     setSelectedBook(book);
     setCurrentPage(0);
-    setInputCode("");
     setError(false);
-    setIsUnlocked(!book.isLocked);
   };
 
-  const handleUnlock = () => {
-    if (selectedBook?.unlockCode === inputCode.toUpperCase()) {
-      setIsUnlocked(true);
+  // Với Mystery books cần unlock bằng bơ, ta sẽ dùng nút "Dùng bơ để mở"
+  const handleUnlockWithAvocados = () => {
+    if (selectedBook && selectedBook.unlockCost && avocados >= selectedBook.unlockCost) {
+      // Trong thực tế, sẽ gọi action để trừ bơ
+      // Ở đây ta chỉ set state để demo
       setError(false);
+      // TODO: Gọi store action để trừ bơ
+      // useMapStore.getState().spendAvocados(selectedBook.unlockCost);
+      
+      // Cập nhật trạng thái mở khóa
+      setSelectedBook({
+        ...selectedBook,
+        isLocked: false,
+      });
     } else {
       setError(true);
     }
   };
 
+  const colorMap: Record<string, { border: string; icon: string; glow: string }> = {
+    blue: { border: "#3a5a8a", icon: "#7aaad4", glow: "rgba(80,140,220,0.25)" },
+    red: { border: "#7a2a1a", icon: "#c07060", glow: "rgba(180,60,40,0.25)" },
+    purple: { border: "#5a3a7a", icon: "#a07ac0", glow: "rgba(120,60,180,0.25)" },
+    amber: { border: "#7a5a1a", icon: "#c8a040", glow: "rgba(200,160,60,0.25)" },
+    green: { border: "#2a6a3a", icon: "#60c090", glow: "rgba(60,160,80,0.25)" },
+  };
+
   return (
-    <div className="space-y-5 " >
+    <div className="space-y-5">
 
       {/* ── Header & Filter ─────────────────────────────────────────── */}
       <div
@@ -152,13 +267,13 @@ export const LibraryContent = ({ data }: { data: Building }) => {
         <div className="flex items-center justify-between px-1">
           <h2
             className="flex items-center gap-2 text-sm uppercase tracking-widest"
-            style={{color: "#c8a040" }}
+            style={{ color: "#c8a040" }}
           >
             <Book className="w-4 h-4" />
-            {data.name || "Thư Viện Tri Thức"}
+            {data.name || "Thư Viện Vương Quốc Bơ"}
           </h2>
           <span className="text-[10px] italic" style={{ color: "#5a4020" }}>
-            Kho lưu trữ: {data.id}
+            📖 Kho báu tri thức • 🥑 {avocados.toLocaleString()} hạt bơ
           </span>
         </div>
 
@@ -172,7 +287,6 @@ export const LibraryContent = ({ data }: { data: Building }) => {
                 onClick={() => setActiveTab(cat.id)}
                 className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] uppercase tracking-widest transition-all"
                 style={{
-                  
                   borderRadius: "2px",
                   border: active ? "1px solid #c8a040" : "1px solid #3a2810",
                   background: active
@@ -193,7 +307,7 @@ export const LibraryContent = ({ data }: { data: Building }) => {
       {/* ── Book shelf ──────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {filteredBooks.map((book) => {
-          const c = bookColor(book.color);
+          const c = colorMap[book.color] ?? colorMap.amber;
           return (
             <div
               key={book.id}
@@ -210,7 +324,6 @@ export const LibraryContent = ({ data }: { data: Building }) => {
                   : `0 0 20px ${c.glow}, inset 0 1px 0 rgba(200,160,80,0.06)`,
               }}
             >
-              {/* Shimmer line on hover */}
               <div
                 className="absolute inset-x-0 top-0 h-px transition-opacity duration-300 opacity-0 group-hover:opacity-100"
                 style={{
@@ -219,7 +332,6 @@ export const LibraryContent = ({ data }: { data: Building }) => {
               />
 
               <div className="flex items-start gap-3">
-                {/* Icon */}
                 <div
                   className="p-2.5 flex-shrink-0 transition-transform duration-300 group-hover:rotate-6"
                   style={{
@@ -235,12 +347,10 @@ export const LibraryContent = ({ data }: { data: Building }) => {
                   }
                 </div>
 
-                {/* Text */}
                 <div className="flex-1 min-w-0">
                   <h4
                     className="text-sm truncate mb-1"
                     style={{
-                      
                       color: book.isLocked ? "#4a3820" : "#e0c880",
                       fontSize: "12px",
                       letterSpacing: "0.04em",
@@ -252,8 +362,15 @@ export const LibraryContent = ({ data }: { data: Building }) => {
                     className="text-[11px] leading-relaxed line-clamp-2 italic"
                     style={{ color: book.isLocked ? "#3a2810" : "#a08050" }}
                   >
-                    {book.isLocked ? "Yêu cầu giải mã để xem nội dung..." : book.description}
+                    {book.isLocked
+                      ? `🔒 Cần ${book.unlockCost?.toLocaleString()} hạt bơ để mở khóa bí ẩn này...`
+                      : book.description}
                   </p>
+                  {book.category === "Mystery" && !book.isLocked && (
+                    <span className="inline-block text-[9px] mt-1" style={{ color: "#60c090" }}>
+                      ✅ Đã mở khóa
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
@@ -264,7 +381,6 @@ export const LibraryContent = ({ data }: { data: Building }) => {
       {/* ── Book modal ──────────────────────────────────────────────── */}
       {selectedBook && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
-          {/* Backdrop */}
           <div
             className="absolute inset-0"
             style={{ background: "rgba(8,4,1,0.75)" }}
@@ -280,19 +396,17 @@ export const LibraryContent = ({ data }: { data: Building }) => {
                 "0 0 0 1px #6b4c1e, 0 0 0 3px #2a1a08, 0 0 0 4px #8b6530, 0 0 60px rgba(180,120,40,0.4)",
             }}
           >
-            {/* Top gold bar */}
             <div style={{
               height: 3,
               background: "linear-gradient(90deg, transparent, #5a3e14 10%, #c8a040 30%, #f0d882 50%, #c8a040 70%, #5a3e14 90%, transparent)",
             }} />
 
-            {/* Corner ornaments */}
             {["top-2 left-2", "top-2 right-2", "bottom-2 left-2", "bottom-2 right-2"].map((pos, i) => (
               <span key={i} className={`absolute ${pos} text-[#6b4c1e] text-sm z-10 leading-none`}>✦</span>
             ))}
 
-            {!isUnlocked ? (
-              /* ── Unlock screen ── */
+            {selectedBook.isLocked && selectedBook.category === "Mystery" ? (
+              /* ── Unlock with Avocados ── */
               <div className="p-8 text-center space-y-6">
                 <div
                   className="inline-flex p-4 rounded-full"
@@ -306,51 +420,41 @@ export const LibraryContent = ({ data }: { data: Building }) => {
                 </div>
 
                 <div>
-                  <h3
-                    className="text-lg mb-1"
-                    style={{color: "#e8c97a", letterSpacing: "0.08em" }}
-                  >
-                    Phong Ấn Cổ Thuật
+                  <h3 className="text-lg mb-1" style={{ color: "#e8c97a", letterSpacing: "0.08em" }}>
+                    📜 Bí Ẩn Cổ Đại
                   </h3>
                   <p className="text-sm italic" style={{ color: "#7a5a28" }}>
-                    Nhập mật mã để phá giải phong ấn
+                    {selectedBook.title}
                   </p>
                 </div>
 
-                {/* Divider */}
                 <div className="flex items-center gap-3" style={{ color: "#4a3410" }}>
                   <div className="flex-1 h-px" style={{ background: "linear-gradient(90deg,transparent,#4a3410)" }} />
-                  <span className="text-xs">⚜</span>
+                  <span className="text-xs">🥑</span>
                   <div className="flex-1 h-px" style={{ background: "linear-gradient(90deg,#4a3410,transparent)" }} />
                 </div>
 
                 <div className="space-y-3 px-2">
-                  <input
-                    type="text"
-                    value={inputCode}
-                    onChange={(e) => { setInputCode(e.target.value); setError(false); }}
-                    onKeyDown={(e) => e.key === "Enter" && handleUnlock()}
-                    placeholder="Mã giải ấn..."
-                    className="w-full py-3 px-4 text-center  text-sm focus:outline-none transition-all"
-                    style={{
-                      background: "rgba(0,0,0,0.4)",
-                      border: `1px solid ${error ? "#8a3020" : "#4a3410"}`,
-                      borderRadius: "2px",
-                      color: "#e8c97a",
-                      letterSpacing: "0.2em",
-                      boxShadow: error ? "0 0 12px rgba(180,60,40,0.3)" : "none",
-                    }}
-                  />
+                  <p className="text-sm" style={{ color: "#a08050" }}>
+                    Sử thi kể rằng, để mở khóa bí ẩn này, người hành hương cần cống hiến{' '}
+                    <strong style={{ color: "#c8a040" }}>{selectedBook.unlockCost?.toLocaleString()} hạt bơ</strong>{' '}
+                    cho kho báu vương quốc.
+                  </p>
+                  <p className="text-xs" style={{ color: "#5a4020" }}>
+                    🥑 Bạn hiện có: {avocados.toLocaleString()} hạt bơ
+                  </p>
+
                   {error && (
                     <p className="flex items-center justify-center gap-1 text-[11px]" style={{ color: "#c06050" }}>
-                      <AlertCircle className="w-3 h-3" /> Mật mã không chính xác!
+                      <AlertCircle className="w-3 h-3" /> Không đủ hạt bơ để mở khóa bí ẩn này!
                     </p>
                   )}
+
                   <button
-                    onClick={handleUnlock}
-                    className="w-full py-2.5 text-sm uppercase tracking-widest transition-all"
+                    onClick={handleUnlockWithAvocados}
+                    disabled={avocados < (selectedBook.unlockCost ?? 0)}
+                    className="w-full py-2.5 text-sm uppercase tracking-widest transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                     style={{
-                      
                       background: "linear-gradient(180deg, rgba(140,100,30,0.5), rgba(80,55,15,0.5))",
                       border: "1px solid #8b6530",
                       borderRadius: "2px",
@@ -358,14 +462,14 @@ export const LibraryContent = ({ data }: { data: Building }) => {
                       boxShadow: "0 0 16px rgba(180,130,40,0.2), inset 0 1px 0 rgba(255,220,100,0.1)",
                     }}
                   >
-                    ⚜ Giải Ấn
+                    🥑 Dùng {selectedBook.unlockCost?.toLocaleString()} hạt bơ để giải ấn
                   </button>
                 </div>
 
                 <button
                   onClick={() => setSelectedBook(null)}
                   className="text-[10px] uppercase tracking-widest transition-colors"
-                  style={{color: "#3a2810" }}
+                  style={{ color: "#3a2810" }}
                 >
                   Hủy bỏ
                 </button>
@@ -373,17 +477,13 @@ export const LibraryContent = ({ data }: { data: Building }) => {
             ) : (
               /* ── Reading screen ── */
               <>
-                {/* Book header */}
                 <div
                   className="flex items-center justify-between px-6 py-4"
                   style={{ borderBottom: "1px solid #3a2810" }}
                 >
                   <div className="flex items-center gap-2" style={{ color: "#c8a040" }}>
                     <Scroll className="w-4 h-4 flex-shrink-0" />
-                    <span
-                      className="text-xs uppercase tracking-widest truncate"
-                      style={{color: "#e8c97a" }}
-                    >
+                    <span className="text-xs uppercase tracking-widest truncate" style={{ color: "#e8c97a" }}>
                       {selectedBook.title}
                     </span>
                   </div>
@@ -400,44 +500,27 @@ export const LibraryContent = ({ data }: { data: Building }) => {
                   </button>
                 </div>
 
-                {/* Page content */}
                 <div className="px-8 py-7 min-h-[220px] relative overflow-hidden">
-                  {/* Watermark */}
                   <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.03]">
                     <Scroll className="w-56 h-56 text-amber-500 rotate-12" />
                   </div>
-                  {/* Candle glow top-right */}
                   <div
                     className="absolute top-0 right-0 w-32 h-32 pointer-events-none"
                     style={{ background: "radial-gradient(circle at 100% 0%, rgba(200,160,60,0.07), transparent 70%)" }}
                   />
 
                   <p
-                    className="relative z-10 text-base leading-loose italic"
+                    className="relative z-10 text-base leading-loose italic whitespace-pre-line"
                     style={{ color: "#c8a870" }}
                   >
-                    <span
-                      className="float-left mr-2 leading-none"
-                      style={{
-                        
-                        fontSize: "3rem",
-                        color: "#c8a040",
-                        lineHeight: 0.85,
-                        textShadow: "0 0 16px rgba(200,160,60,0.4)",
-                      }}
-                    >
-                      {selectedBook.pages[currentPage][0]}
-                    </span>
-                    {selectedBook.pages[currentPage].slice(1)}
+                    {selectedBook.pages[currentPage]}
                   </p>
                 </div>
 
-                {/* Navigation */}
                 <div
                   className="px-6 py-3 flex items-center justify-between"
                   style={{ borderTop: "1px solid #2a1a08", background: "rgba(0,0,0,0.25)" }}
                 >
-                  {/* Page dots */}
                   <div className="flex items-center gap-1.5">
                     {selectedBook.pages.map((_, i) => (
                       <button
@@ -455,7 +538,6 @@ export const LibraryContent = ({ data }: { data: Building }) => {
                     ))}
                   </div>
 
-                  {/* Prev / page count / Next */}
                   <div className="flex items-center gap-2">
                     <button
                       disabled={currentPage === 0}
@@ -470,7 +552,7 @@ export const LibraryContent = ({ data }: { data: Building }) => {
                     >
                       <ChevronLeft className="w-4 h-4" />
                     </button>
-                    <span className="text-[10px] " style={{ color: "#5a4020" }}>
+                    <span className="text-[10px]" style={{ color: "#5a4020" }}>
                       {currentPage + 1}/{selectedBook.pages.length}
                     </span>
                     <button
@@ -491,7 +573,6 @@ export const LibraryContent = ({ data }: { data: Building }) => {
               </>
             )}
 
-            {/* Bottom bar */}
             <div style={{
               height: 2,
               background: "linear-gradient(90deg, transparent, #3a2810 15%, #7a5a28 50%, #3a2810 85%, transparent)",
@@ -514,21 +595,38 @@ export const LibraryContent = ({ data }: { data: Building }) => {
           95%            { opacity: 0.9; box-shadow: 0 0 18px rgba(200,140,40,0.4); }
         }
 
-        /* Reuse close-btn rune ring from InfoModal */
-        .close-btn { position: relative; overflow: visible !important; transition: color .25s, border-color .25s, box-shadow .25s; }
+        .close-btn {
+          position: relative;
+          overflow: visible !important;
+          transition: color .25s, border-color .25s, box-shadow .25s;
+        }
         .close-btn::before {
           content: '';
-          position: absolute; inset: -5px; border-radius: 50%;
+          position: absolute;
+          inset: -5px;
+          border-radius: 50%;
           border: 1.5px dashed #7a3a20;
-          opacity: 0; transition: opacity .3s;
+          opacity: 0;
+          transition: opacity .3s;
           animation: fantasy-spin 4s linear infinite;
           animation-play-state: paused;
           pointer-events: none;
         }
-        .close-btn:hover { color: #ffd0b0 !important; border-color: #d06040 !important; box-shadow: 0 0 18px rgba(200,80,50,.55); }
-        .close-btn:hover::before { opacity: 1; animation-play-state: running; }
-        .close-btn:active { transform: scale(0.92); }
-        @keyframes fantasy-spin { to { transform: rotate(360deg); } }
+        .close-btn:hover {
+          color: #ffd0b0 !important;
+          border-color: #d06040 !important;
+          box-shadow: 0 0 18px rgba(200,80,50,.55);
+        }
+        .close-btn:hover::before {
+          opacity: 1;
+          animation-play-state: running;
+        }
+        .close-btn:active {
+          transform: scale(0.92);
+        }
+        @keyframes fantasy-spin {
+          to { transform: rotate(360deg); }
+        }
       `}</style>
     </div>
   );

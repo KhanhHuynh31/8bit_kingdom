@@ -128,7 +128,7 @@ export const BankContent = ({ data }: { data: Building }) => {
                     Tổng cộng
                   </span>
                   <span className="text-white font-mono font-bold text-xs">
-                    {totalEnergy.toLocaleString()} Sét
+                    {totalEnergy.toLocaleString()} Năng Lượng
                   </span>
                 </div>
               </div>
@@ -141,7 +141,7 @@ export const BankContent = ({ data }: { data: Building }) => {
           </div>
           <div className="text-4xl font-bold text-blue-100 flex items-baseline gap-2">
             {totalEnergy.toLocaleString()}{" "}
-            <span className="text-xs font-normal opacity-60">SÉT</span>
+            <span className="text-xs font-normal opacity-60">Năng Lượng</span>
           </div>
 
           <div className="mt-3 flex items-center justify-between">

@@ -15,6 +15,9 @@ import {
   Scroll,
   ShieldCheck,
   ChevronRight,
+  Crown,
+  Sparkles,
+  TrendingUp,
 } from "lucide-react";
 import { selectTotalEnergy, useMapStore } from "@/stores/useMapStore";
 
@@ -23,6 +26,14 @@ export const CastleContent = ({ data }: { data: Building }) => {
   const videoCount = useMapStore((state) => state.ytStats.videoCount);
   const avocados = useMapStore((state) => state.avocados);
   const totalEnergy = useMapStore(selectTotalEnergy);
+
+  // Upgrade levels configuration
+  const upgrades = [
+    { level: 1, cost: 10000, name: "Bơ thiếu nhi", unlocked: totalEnergy >= 10000 },
+    { level: 2, cost: 100000, name: "Bơ tuổi teen", unlocked: totalEnergy >= 100000 },
+    { level: 3, cost: 1000000, name: "Bơ trưởng thành", unlocked: totalEnergy >= 1000000 },
+  ];
+
   const socialLinks = [
     {
       label: "YouTube",
@@ -60,18 +71,18 @@ export const CastleContent = ({ data }: { data: Building }) => {
 
   const stats = [
     {
-      label: "Cư dân",
+      label: "thần dân",
       val: subscribers,
       icon: Users,
       color: "#c8a040",
     },
     {
-      label: "Văn thư",
+      label: "Video",
       val: videoCount,
       icon: Video,
       color: "#60c090",
     },
-    { label: "Nhiệt lượng", val: totalEnergy, icon: Flame, color: "#c06050" },
+    { label: "Năng lượng", val: totalEnergy, icon: Flame, color: "#c06050" },
     { label: "Hạt bơ", val: avocados, icon: Gem, color: "#7aaad4" },
   ];
 
@@ -132,7 +143,7 @@ export const CastleContent = ({ data }: { data: Building }) => {
                   "0 0 30px rgba(232,200,120,0.35), 0 1px 3px rgba(0,0,0,0.9)",
               }}
             >
-              {data.name || "Pixel Kingdom"}
+              {data.name || "Vương quốc Bơ"}
             </h2>
 
             <div className="flex flex-wrap justify-center md:justify-start gap-3">
@@ -146,7 +157,7 @@ export const CastleContent = ({ data }: { data: Building }) => {
                   borderRadius: "2px",
                 }}
               >
-                ⚜ High King
+                <Crown className="w-3 h-3" /> Thần dân trung thành
               </span>
               {/* Location badge */}
               <span
@@ -256,6 +267,7 @@ export const CastleContent = ({ data }: { data: Building }) => {
           </div>
 
           <div
+            className="relative"
             style={{
               background: "linear-gradient(160deg, #1c1208, #140e06)",
               border: "1px solid #3a2810",
@@ -284,25 +296,63 @@ export const CastleContent = ({ data }: { data: Building }) => {
                 <Scroll className="w-5 h-5" style={{ color: "#c8a040" }} />
               </div>
               <div
-                className="space-y-3 text-sm leading-relaxed italic"
+                className="space-y-4 text-sm leading-relaxed italic"
                 style={{ color: "#a08050" }}
               >
                 <p>
-                  Khởi nguồn từ một ý tưởng nhỏ trong thế giới Pixel Vương Quốc,
-                  vương quốc này đã vươn mình trở thành một thánh địa sáng tạo.
+                  Qua hàng thiên niên kỷ, Vương quốc Bơ phát triển thịnh vượng nhờ dòng chảy <strong className="text-[#60c090]">Năng lượng Tinh thần</strong> từ những thần dân trung thành và những người hành hương khắp nơi đổ về. 
                 </p>
                 <p>
-                  Mỗi tác phẩm là một mảnh ghép của lịch sử, được tôi luyện qua
-                  những giờ làm việc miệt mài và sự ủng hộ nhiệt thành từ cộng
-                  đồng.
+                  Vương quốc Bơ đã trở thành biểu tượng của sự kết nối văn hóa và nghệ thuật số. Mỗi tác phẩm, mỗi video đều là một nhịp cầu giữa thế giới thực và ảo, nơi những giấc mơ được ấp ủ và những tài năng được tỏa sáng. Sứ mệnh của vương quốc là lan tỏa năng lượng tích cực đến mọi miền, biến thế giới này trở nên tốt đẹp hơn qua từng <strong className="text-[#c8a040]">hạt bơ</strong> - mỗi hạt là một hạnh phúc, một kết nối diệu kỳ.
                 </p>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Social links */}
+        {/* Ambassador & Social Links */}
         <div className="md:col-span-5 space-y-4">
+          {/* Ambassador Card */}
+          <div
+            className="relative overflow-hidden transition-all duration-500 hover:scale-[1.02]"
+            style={{
+              background: "linear-gradient(135deg, #2a1a0a, #1a0e05)",
+              border: "2px solid #c8a040",
+              borderRadius: "2px",
+              padding: "16px",
+              boxShadow: "0 0 30px rgba(200,160,64,0.2)",
+            }}
+          >
+            <div className="absolute top-0 right-0 w-20 h-20 opacity-10">
+              <Sparkles className="w-full h-full" />
+            </div>
+            <div className="flex items-center gap-4">
+              <div
+                className="w-16 h-16 rounded-full overflow-hidden border-2 border-[#c8a040] shadow-lg"
+                style={{ boxShadow: "0 0 20px rgba(200,160,64,0.4)" }}
+              >
+                <Image
+                  src={data.imageSrc || ""}
+                  alt="Pu 8bit"
+                  width={64}
+                  height={64}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-bold text-[#e8c97a] tracking-wide">
+                  Pu 8bit
+                </h3>
+                <p className="text-xs text-[#a08050] uppercase tracking-wider">
+                  Đại sứ Vương quốc Bơ
+                </p>
+                <p className="text-[11px] text-[#7a5a30] mt-1 italic">
+                  &quot;Dẫn dắt linh hồn vương quốc qua từng con chữ và giai điệu&quot;
+                </p>
+              </div>
+            </div>
+          </div>
+
           {/* Section heading */}
           <div className="flex items-center gap-3 px-1">
             <div
@@ -352,7 +402,6 @@ export const CastleContent = ({ data }: { data: Building }) => {
                   }}
                 >
                   <div className="flex items-center gap-4">
-                    {/* Icon container */}
                     <div
                       className="p-2 flex-shrink-0 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3"
                       style={{
@@ -364,7 +413,6 @@ export const CastleContent = ({ data }: { data: Building }) => {
                     >
                       <Icon className="w-5 h-5" fill="currentColor" />
                     </div>
-                    {/* Label */}
                     <span
                       className="text-xs tracking-[0.2em]"
                       style={{
@@ -374,8 +422,6 @@ export const CastleContent = ({ data }: { data: Building }) => {
                       {link.label}
                     </span>
                   </div>
-
-                  {/* Chevron */}
                   <ChevronRight
                     className="w-4 h-4 opacity-20 group-hover:opacity-80 group-hover:translate-x-1 transition-all duration-300"
                     style={{ color: link.iconColor }}
@@ -384,6 +430,116 @@ export const CastleContent = ({ data }: { data: Building }) => {
               );
             })}
           </div>
+        </div>
+      </div>
+
+      {/* ── 4. Kingdom Upgrades ──────────────────────────────────────── */}
+      <div className="space-y-4">
+        {/* Section heading */}
+        <div className="flex items-center gap-3 px-1">
+          <div
+            className="h-px w-8"
+            style={{
+              background: "linear-gradient(90deg, transparent, #6b4c1e)",
+            }}
+          />
+          <span
+            className="text-[9px] uppercase tracking-[0.4em]"
+            style={{ color: "#6b4c1e" }}
+          >
+            Nâng cấp vương quốc
+          </span>
+          <div
+            className="h-px flex-1"
+            style={{
+              background: "linear-gradient(90deg, #6b4c1e, transparent)",
+            }}
+          />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {upgrades.map((upgrade, idx) => (
+            <div
+              key={idx}
+              className={`relative group cursor-pointer transition-all duration-500 ${
+                upgrade.unlocked ? "hover:scale-105" : "opacity-60"
+              }`}
+              style={{
+                background: "linear-gradient(160deg, #1c1208, #140e06)",
+                border: upgrade.unlocked ? "2px solid #c8a040" : "1px solid #3a2810",
+                borderRadius: "2px",
+                padding: "20px",
+                boxShadow: upgrade.unlocked
+                  ? "0 0 20px rgba(200,160,64,0.2)"
+                  : "none",
+              }}
+            >
+              {/* Glow effect on hover */}
+              {upgrade.unlocked && (
+                <div className="absolute inset-0 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-sm"
+                  style={{
+                    boxShadow: "0 0 30px rgba(200,160,64,0.4), inset 0 0 20px rgba(200,160,64,0.1)",
+                  }}
+                />
+              )}
+              
+              <div className="relative z-10">
+                <div className="flex items-center justify-between mb-3">
+                  <div
+                    className="p-2"
+                    style={{
+                      background: upgrade.unlocked ? "rgba(200,160,64,0.15)" : "rgba(100,80,30,0.1)",
+                      borderRadius: "2px",
+                    }}
+                  >
+                    {upgrade.unlocked ? (
+                      <Sparkles className="w-5 h-5 text-[#c8a040]" />
+                    ) : (
+                      <TrendingUp className="w-5 h-5 text-[#5a4020]" />
+                    )}
+                  </div>
+                  <span
+                    className="text-xs font-bold"
+                    style={{ color: upgrade.unlocked ? "#c8a040" : "#5a4020" }}
+                  >
+                    Cấp {upgrade.level}
+                  </span>
+                </div>
+                
+                <h3
+                  className="text-base font-bold mb-2"
+                  style={{ color: upgrade.unlocked ? "#e8c97a" : "#7a5a30" }}
+                >
+                  {upgrade.name}
+                </h3>
+                
+                <p className="text-[11px] leading-relaxed mb-3" style={{ color: "#7a5a30" }}>
+                  {upgrade.unlocked
+                    ? "✨ Đã mở khóa - Vương quốc bước vào kỷ nguyên mới!"
+                    : `🔒 Yêu cầu: ${upgrade.cost.toLocaleString()} Năng lượng`}
+                </p>
+                
+                {!upgrade.unlocked && (
+                  <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-[#2a1a0a]">
+                    <div
+                      className="h-full transition-all duration-1000"
+                      style={{
+                        width: `${Math.min(100, (totalEnergy / upgrade.cost) * 100)}%`,
+                        background: "linear-gradient(90deg, #c8a040, #e8c97a)",
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+        
+        {/* Mysterious hint */}
+        <div className="text-center py-2">
+          <p className="text-[10px] tracking-widest animate-pulse" style={{ color: "#5a4020" }}>
+            ⚡ Nâng cấp vương quốc mở khóa những bí mật chưa từng được tiết lộ...
+          </p>
         </div>
       </div>
 

@@ -6,7 +6,7 @@ export const SECONDARY_BUILDINGS: Building[] = [
     id: "avacado_tree",
     name: "Cây bơ cổ thụ",
     description:
-      "Cây bơ thần kỳ tỏa bóng mát toàn khu vực, trái của nó cung cấp năng lượng vĩnh cửu cho cư dân.",
+      "Cây bơ thần kỳ tỏa bóng mát toàn khu vực, trái của nó cung cấp năng lượng vĩnh cửu cho thần dân.",
     worldX: 4,
     worldY: -1,
     width: 3,
@@ -20,7 +20,7 @@ export const SECONDARY_BUILDINGS: Building[] = [
     id: "sale1",
     name: "Mặt tiền A1",
     description:
-      "Cây bơ thần kỳ tỏa bóng mát toàn khu vực, trái của nó cung cấp năng lượng vĩnh cửu cho cư dân.",
+      "Cây bơ thần kỳ tỏa bóng mát toàn khu vực, trái của nó cung cấp năng lượng vĩnh cửu cho thần dân.",
     worldX: -2,
     worldY: -7,
     width: 4,
@@ -35,7 +35,7 @@ export const SECONDARY_BUILDINGS: Building[] = [
     id: "pool",
     name: "Bể bơi",
     description:
-      "Nơi thư giãn và tái tạo năng lượng cho các cư dân vương quốc.",
+      "Nơi thư giãn và tái tạo năng lượng cho các thần dân vương quốc.",
     worldX: -11,
     worldY: -9,
     width: 6,
@@ -65,7 +65,7 @@ export const SECONDARY_BUILDINGS: Building[] = [
     id: "trophy",
     name: "Cúp vô địch",
     description:
-      "Nơi thư giãn và tái tạo năng lượng cho các cư dân vương quốc.",
+      "Nơi thư giãn và tái tạo năng lượng cho các thần dân vương quốc.",
     worldX: 11,
     worldY: -7,
     width: 3,
