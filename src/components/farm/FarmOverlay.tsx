@@ -589,7 +589,7 @@ export default function FarmOverlay({
   const doHarvest = useCallback(
     (id: number) => {
       harvestPlot(id);
-      showToast("+200 🥑 Thu hoạch bơ!");
+      showToast("+2000 🥑 Thu hoạch bơ!");
       setSelectedPlotId(null);
     },
     [harvestPlot, showToast],

@@ -54,7 +54,7 @@ export const GROW_TIME_MS = 30_000;
 export const RAIN_DURATION_MS = 3_000;
 
 /** Bơ nhận được khi thu hoạch */
-export const HARVEST_YIELD = 200;
+export const HARVEST_YIELD = 2500;
 
 // ─── Helpers (exported) ───────────────────────────────────────────────────────
 

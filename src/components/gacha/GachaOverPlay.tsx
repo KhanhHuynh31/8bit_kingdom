@@ -1,15 +1,5 @@
 "use client";
 
-/**
- * GachaOverlay v3 — Popup nhỏ trên map
- * ──────────────────────────────────────
- * • Click building "summoning_gate" → mini popup ngay trên cổng:
- *     [×1 — 1.000🥑]  [×10 — 10.000🥑]
- * • Nhấn → animation ngôi sao rơi xuống cổng → hiện 1 hoặc 10 thẻ kết quả nhỏ
- * • Không có panel fullscreen nào cả
- * • Công trình quay được → vào Inventory (xem qua Bag)
- */
-
 import {
   useEffect, useRef, useCallback, useState, useMemo,
 } from "react";
@@ -25,35 +15,46 @@ import {
 import { Camera } from "@/stores/types";
 import { BUILDINGS, TILE_SIZE } from "@/constants/map";
 import { worldToScreen } from "@/utils/coords";
-import { X, Sparkles } from "lucide-react";
+import { X } from "lucide-react";
 
-// ─── RPG palette ──────────────────────────────────────────────────────────────
+// ─── Palette ──────────────────────────────────────────────────────────────────
 const C = {
-  bg:     "rgba(11,13,19,0.97)",
-  border: "rgba(180,140,60,0.35)",
-  amber:  "#d4a843",
-  amberD: "rgba(212,168,67,0.15)",
-  text:   "#e8dfc8",
-  muted:  "#8a7d5a",
-  scroll: "#c4a484",
+  bg:    "rgba(8,10,14,0.96)",
+  line:  "rgba(255,255,255,0.07)",
+  amber: "#c8973a",
+  text:  "#d8cdb8",
+  muted: "#5a5040",
 };
 
-// ─── Canvas star animation ─────────────────────────────────────────────────────
+// ─── Types ────────────────────────────────────────────────────────────────────
 
-interface FallingStar {
-  id: number; x: number; startY: number;
-  targetX: number; targetY: number;
-  progress: number; speed: number; size: number;
+interface Star {
+  startX: number;
+  startY: number;
+  /** World-space gate centre — converted live each frame */
+  gateWorldX: number;
+  gateWorldY: number;
+  /** Per-star random offset so stars spread around centre */
+  offsetX: number;
+  offsetY: number;
+  progress: number;
+  speed: number;
+  size: number;
   colorKey: StarAnimRarity;
   trail: { x: number; y: number; alpha: number }[];
   done: boolean;
 }
 
+// ─── Canvas star hook ─────────────────────────────────────────────────────────
+
 function rgb(k: StarAnimRarity) {
   return k === 5 ? "245,200,66" : k === 4 ? "196,127,255" : "91,174,255";
 }
 
-function drawStar(ctx: CanvasRenderingContext2D, cx: number, cy: number, size: number, color: string) {
+function drawStarShape(
+  ctx: CanvasRenderingContext2D,
+  cx: number, cy: number, size: number, color: string,
+) {
   ctx.beginPath();
   for (let i = 0; i < 10; i++) {
     const r = i % 2 === 0 ? size : size * 0.42;
@@ -69,76 +70,116 @@ function drawStar(ctx: CanvasRenderingContext2D, cx: number, cy: number, size: n
   ctx.fill(); ctx.shadowBlur = 0;
 }
 
+/**
+ * FIX: Mỗi frame RAF đọc camera từ cameraRef (luôn mới nhất),
+ * tính lại tọa độ screen của cổng từ world-space.
+ * → Kéo map không làm sao lệch mục tiêu.
+ */
 function useStarCanvas(
-  ref: React.RefObject<HTMLCanvasElement | null>,
-  stars: FallingStar[],
+  canvasRef: React.RefObject<HTMLCanvasElement | null>,
+  stars: Star[],
+  cameraRef: React.RefObject<Camera>,
+  containerW: number,
+  containerH: number,
   onDone: () => void,
 ) {
   const rafRef    = useRef<number>(0);
-  const starsRef  = useRef<FallingStar[]>([]);
+  const starsRef  = useRef<Star[]>([]);
   const onDoneRef = useRef(onDone);
   onDoneRef.current = onDone;
 
   useEffect(() => {
     if (!stars.length) return;
     starsRef.current = stars.map((s) => ({ ...s, trail: [] }));
-    const canvas = ref.current; if (!canvas) return;
-    const ctx = canvas.getContext("2d"); if (!ctx) return;
+
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
     let called = false;
+    const cX = containerW / 2;
+    const cY = containerH / 2;
 
     const draw = () => {
+      const cam = cameraRef.current;
+      if (!cam) { rafRef.current = requestAnimationFrame(draw); return; }
+
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       let allDone = true;
 
       starsRef.current.forEach((s) => {
         if (s.done) return;
         allDone = false;
+
         s.progress = Math.min(1, s.progress + s.speed);
-        const e  = s.progress * s.progress;
-        const cx = s.x      + (s.targetX - s.x)      * e;
-        const cy = s.startY + (s.targetY - s.startY) * e;
-        const col = STAR_ANIM_COLOR[s.colorKey];
+        const ease = s.progress * s.progress;
+
+        // Recompute target from world-space every frame
+        const gate = worldToScreen(s.gateWorldX, s.gateWorldY, cam, cX, cY);
+        const tx   = gate.x + s.offsetX;
+        const ty   = gate.y + s.offsetY;
+
+        const px = s.startX + (tx - s.startX) * ease;
+        const py = s.startY + (ty - s.startY) * ease;
+
+        const col    = STAR_ANIM_COLOR[s.colorKey];
         const rgbStr = rgb(s.colorKey);
 
-        s.trail.push({ x: cx, y: cy, alpha: 0.9 });
+        // Trail
+        s.trail.push({ x: px, y: py, alpha: 0.88 });
         if (s.trail.length > 18) s.trail.shift();
         s.trail.forEach((p, i) => {
           const f = i / s.trail.length;
-          ctx.beginPath(); ctx.arc(p.x, p.y, s.size * 0.28 * f, 0, Math.PI * 2);
-          ctx.fillStyle = `rgba(${rgbStr},${p.alpha * f * 0.6})`; ctx.fill();
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, s.size * 0.27 * f, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(${rgbStr},${p.alpha * f * 0.55})`;
+          ctx.fill();
           p.alpha *= 0.86;
         });
 
-        const grd = ctx.createRadialGradient(cx, cy, 0, cx, cy, s.size * 2.6);
-        grd.addColorStop(0, `rgba(${rgbStr},.8)`); grd.addColorStop(1, `rgba(${rgbStr},0)`);
-        ctx.beginPath(); ctx.arc(cx, cy, s.size * 2.6, 0, Math.PI * 2);
+        // Halo
+        const grd = ctx.createRadialGradient(px, py, 0, px, py, s.size * 2.8);
+        grd.addColorStop(0, `rgba(${rgbStr},.82)`);
+        grd.addColorStop(1, `rgba(${rgbStr},0)`);
+        ctx.beginPath(); ctx.arc(px, py, s.size * 2.8, 0, Math.PI * 2);
         ctx.fillStyle = grd; ctx.fill();
 
-        drawStar(ctx, cx, cy, s.size, col);
+        // Core star
+        drawStarShape(ctx, px, py, s.size, col);
 
+        // Burst rays near end
         if (s.progress > 0.82) {
           const t = (s.progress - 0.82) / 0.18;
           for (let i = 0; i < 8; i++) {
             const a = (i / 8) * Math.PI * 2;
-            ctx.beginPath(); ctx.moveTo(cx, cy);
-            ctx.lineTo(cx + Math.cos(a) * s.size * 4 * t, cy + Math.sin(a) * s.size * 4 * t);
+            ctx.beginPath();
+            ctx.moveTo(px, py);
+            ctx.lineTo(px + Math.cos(a) * s.size * 4.5 * t, py + Math.sin(a) * s.size * 4.5 * t);
             ctx.strokeStyle = col; ctx.globalAlpha = 0.4; ctx.lineWidth = 1.5; ctx.stroke();
             ctx.globalAlpha = 1;
           }
         }
+
         if (s.progress >= 1) s.done = true;
       });
 
       if (allDone && !called) {
         called = true;
-        const f = starsRef.current[0];
-        if (f) {
-          const g = ctx.createRadialGradient(f.targetX, f.targetY, 0, f.targetX, f.targetY, 150);
-          g.addColorStop(0, `rgba(${rgb(f.colorKey)},.6)`); g.addColorStop(1, `rgba(${rgb(f.colorKey)},0)`);
-          ctx.beginPath(); ctx.arc(f.targetX, f.targetY, 150, 0, Math.PI * 2);
+        const cam2 = cameraRef.current;
+        if (cam2 && starsRef.current[0]) {
+          const f  = starsRef.current[0];
+          const gs = worldToScreen(f.gateWorldX, f.gateWorldY, cam2, cX, cY);
+          const g  = ctx.createRadialGradient(gs.x, gs.y, 0, gs.x, gs.y, 160);
+          g.addColorStop(0, `rgba(${rgb(f.colorKey)},.65)`);
+          g.addColorStop(1, `rgba(${rgb(f.colorKey)},0)`);
+          ctx.beginPath(); ctx.arc(gs.x, gs.y, 160, 0, Math.PI * 2);
           ctx.fillStyle = g; ctx.fill();
         }
-        setTimeout(() => { ctx.clearRect(0, 0, canvas.width, canvas.height); onDoneRef.current(); }, 450);
+        setTimeout(() => {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          onDoneRef.current();
+        }, 420);
         return;
       }
       rafRef.current = requestAnimationFrame(draw);
@@ -146,226 +187,183 @@ function useStarCanvas(
 
     cancelAnimationFrame(rafRef.current);
     rafRef.current = requestAnimationFrame(draw);
-    return () => { cancelAnimationFrame(rafRef.current); ctx.clearRect(0, 0, canvas.width, canvas.height); };
+    return () => {
+      cancelAnimationFrame(rafRef.current);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stars.length]);
 }
 
-// ─── Result card (compact) ────────────────────────────────────────────────────
+// ─── Ultra-minimal pull popup ─────────────────────────────────────────────────
 
-function ResultCard({ result, idx }: { result: GachaResult; idx: number }) {
-  const delay = `${idx * 55}ms`;
-  if (result.kind === "avocado") {
-    return (
-      <div style={{
-        width: 72, display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
-        animation: "cardIn .35s both", animationDelay: delay,
-      }}>
-        <div style={{
-          width: 64, height: 80, borderRadius: 5, background: C.bg,
-          border: `1.5px solid ${C.border}`,
-          display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2,
-          position: "relative", overflow: "hidden",
-        }}>
-          <div style={{ position: "absolute", inset: 0, background: "repeating-linear-gradient(0deg,transparent,transparent 11px,rgba(180,140,60,.04) 12px)" }} />
-          <span style={{ fontSize: 22, position: "relative" }}>🥑</span>
-          <span style={{ fontSize: 12, fontWeight: 800, color: C.amber, position: "relative" }}>+{result.amount}</span>
-        </div>
-        <span style={{ fontSize: 8, color: C.muted, textTransform: "uppercase", letterSpacing: ".04em" }}>Bơ</span>
-      </div>
-    );
-  }
-  const d = result as DecoBuilding;
-  return (
-    <div style={{
-      width: 72, display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
-      animation: "cardIn .35s both", animationDelay: delay,
-    }}>
-      <div style={{
-        width: 64, height: 80, borderRadius: 5, overflow: "hidden", position: "relative",
-        border: `2px solid ${RARITY_COLOR[d.rarity]}`,
-        boxShadow: `0 0 10px ${RARITY_GLOW[d.rarity]}`,
-        background: C.bg,
-      }}>
-        <Image src={d.cardSrc} alt={d.name} fill unoptimized style={{ objectFit: "cover" }} />
-        <div style={{ position: "absolute", inset: 0, background: `linear-gradient(180deg,transparent 55%,${RARITY_COLOR[d.rarity]}33 100%)` }} />
-      </div>
-      <span style={{ fontSize: 8, color: C.text, textAlign: "center", lineHeight: 1.2, maxWidth: 68 }}>{d.name}</span>
-      <span style={{ fontSize: 8, color: RARITY_COLOR[d.rarity], letterSpacing: 1 }}>{RARITY_LABEL[d.rarity]}</span>
-    </div>
-  );
-}
-
-// ─── Mini pull popup (ngay trên cổng) ────────────────────────────────────────
-
-function GatePullPopup({
-  gateScreenX, gateScreenY, gateScreenW,
-  avocados, onPull1, onPull10, onClose,
+function PullPopup({
+  cx, cy, avocados, onPull1, onPull10,
 }: {
-  gateScreenX: number; gateScreenY: number; gateScreenW: number;
-  avocados: number;
+  cx: number; cy: number; avocados: number;
   onPull1: () => void; onPull10: () => void; onClose: () => void;
 }) {
-  const can1  = avocados >= GACHA_COST;
-  const can10 = avocados >= GACHA_COST_10;
-  const cx    = gateScreenX + gateScreenW / 2;
-
   return (
     <div style={{
       position: "absolute",
-      left: cx,
-      top: gateScreenY - 12,
+      left: cx, top: cy - 10,
       transform: "translate(-50%, -100%)",
-      pointerEvents: "auto",
-      zIndex: 200,
+      pointerEvents: "auto", zIndex: 200,
     }}>
       <div style={{
-        background: C.bg, border: `1.5px solid ${C.border}`,
-        borderRadius: 6, overflow: "hidden",
-        boxShadow: `0 0 24px ${C.amberD}, 0 8px 32px rgba(0,0,0,.8)`,
-        minWidth: 240,
+        background: C.bg, border: `1px solid ${C.line}`,
+        borderRadius: 8, padding: 6,
+        display: "flex", flexDirection: "column", gap: 4,
+        minWidth: 190,
+        boxShadow: "0 8px 32px rgba(0,0,0,.75)",
       }}>
-        {/* Top scroll bar */}
-        <div style={{ height: 4, background: C.scroll }} />
-
-        {/* Header */}
-        <div style={{
-          padding: "8px 12px 6px",
-          background: C.amberD,
-          borderBottom: `1px solid ${C.border}`,
-          display: "flex", alignItems: "center", justifyContent: "space-between",
-        }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <Sparkles size={12} style={{ color: C.amber }} />
-            <span style={{ fontSize: 10, fontWeight: 700, color: C.amber, textTransform: "uppercase", letterSpacing: "0.1em" }}>
-              Cổng Triệu Hồi
-            </span>
-          </div>
-          <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: C.muted, display: "flex" }}>
-            <X size={12} />
-          </button>
-        </div>
-
-        {/* Buttons */}
-        <div style={{ padding: "10px 12px", display: "flex", flexDirection: "column", gap: 6 }}>
-          <PullBtn label="×1 Cầu Nguyện" cost={GACHA_COST} canAfford={can1} onClick={onPull1} accent />
-          <PullBtn label="×10 Triệu Hồi" cost={GACHA_COST_10} canAfford={can10} onClick={onPull10} />
-          <div style={{ fontSize: 9, color: C.muted, textAlign: "center", marginTop: 2 }}>
-            🥑 {avocados.toLocaleString()} — 5★:10% 4★:20% 🥑:70%
-          </div>
-        </div>
-
-        {/* Bottom scroll bar */}
-        <div style={{ height: 4, background: C.scroll }} />
+        <PullRow label="×1"  cost={GACHA_COST}    canAfford={avocados >= GACHA_COST}    onClick={onPull1} primary />
+        <div style={{ height: 1, background: C.line }} />
+        <PullRow label="×10" cost={GACHA_COST_10} canAfford={avocados >= GACHA_COST_10} onClick={onPull10} />
       </div>
-
-      {/* Arrow */}
+      {/* Caret */}
       <div style={{
         width: 0, height: 0, margin: "0 auto",
-        borderLeft: "7px solid transparent", borderRight: "7px solid transparent",
-        borderTop: `7px solid ${C.border}`,
+        borderLeft: "6px solid transparent", borderRight: "6px solid transparent",
+        borderTop: `6px solid ${C.line}`,
       }} />
     </div>
   );
 }
 
-function PullBtn({
-  label, cost, canAfford, onClick, accent = false,
-}: { label: string; cost: number; canAfford: boolean; onClick: () => void; accent?: boolean }) {
+function PullRow({
+  label, cost, canAfford, onClick, primary = false,
+}: {
+  label: string; cost: number; canAfford: boolean; onClick: () => void; primary?: boolean;
+}) {
   return (
-    <button
-      onClick={onClick}
-      disabled={!canAfford}
-      style={{
-        width: "100%", padding: "8px 12px",
-        borderRadius: 3, border: `1.5px solid ${canAfford ? (accent ? C.amber : C.border) : "rgba(80,70,50,.4)"}`,
-        background: canAfford && accent ? C.amberD : "transparent",
-        color: canAfford ? (accent ? C.amber : C.text) : C.muted,
-        fontSize: 11, fontWeight: 700, cursor: canAfford ? "pointer" : "not-allowed",
-        textTransform: "uppercase", letterSpacing: "0.06em",
-        display: "flex", alignItems: "center", justifyContent: "space-between",
-      }}
-    >
-      <span>{label}</span>
-      <span style={{ fontSize: 10, opacity: .75 }}>{cost.toLocaleString()}🥑</span>
+    <button onClick={onClick} disabled={!canAfford} style={{
+      display: "flex", alignItems: "center", justifyContent: "space-between",
+      padding: "7px 10px", borderRadius: 5, border: "none",
+      background: canAfford && primary ? "rgba(200,151,58,0.12)" : "transparent",
+      cursor: canAfford ? "pointer" : "not-allowed", gap: 24, width: "100%",
+    }}>
+      <span style={{ fontSize: 13, fontWeight: 700, color: canAfford ? (primary ? C.amber : C.text) : C.muted, letterSpacing: ".04em" }}>
+        {label}
+      </span>
+      <span style={{ fontSize: 11, fontWeight: 600, color: canAfford ? C.amber : C.muted }}>
+        {cost.toLocaleString()} 🥑
+      </span>
     </button>
   );
 }
 
-// ─── Result mini panel (hiện sau animation) ───────────────────────────────────
+// ─── Minimal result panel (position: fixed — không bị ảnh hưởng bởi camera) ──
 
 function ResultPanel({
-  results, gateScreenX, gateScreenY, gateScreenW, screenH,
-  avocados, onPull1, onPull10, onClose,
+  results, avocados, onPull1, onPull10, onClose,
 }: {
   results: GachaResult[];
-  gateScreenX: number; gateScreenY: number; gateScreenW: number; screenH: number;
+  screenH: number;
   avocados: number;
   onPull1: () => void; onPull10: () => void; onClose: () => void;
 }) {
-  const is10 = results.length >= 10;
-  const panelW = is10 ? Math.min(700, gateScreenW * 3) : 280;
-  const cx = gateScreenX + gateScreenW / 2;
-
-  // Nếu panel tràn xuống → hiển thị phía trên
-  const fitsBelow = gateScreenY + 300 < screenH;
+  const is10   = results.length >= 10;
+  const panelW = is10
+    ? Math.min(660, (typeof window !== "undefined" ? window.innerWidth : 660) - 32)
+    : 270;
 
   return (
     <div style={{
-      position: "absolute",
-      left: Math.max(8, Math.min(cx - panelW / 2, window.innerWidth - panelW - 8)),
-      top: fitsBelow ? gateScreenY + 16 : gateScreenY - 16,
-      transform: fitsBelow ? "none" : "translateY(-100%)",
+      position: "fixed",
+      left: "50%", top: "50%",
+      transform: "translate(-50%, -50%)",
       width: panelW,
-      pointerEvents: "auto",
-      zIndex: 200,
-      animation: "fadeUp .3s both",
+      pointerEvents: "auto", zIndex: 500,
+      animation: "rIn .22s both",
     }}>
       <div style={{
-        background: C.bg, border: `1.5px solid ${C.border}`,
-        borderRadius: 6, overflow: "hidden",
-        boxShadow: `0 0 30px ${C.amberD}, 0 12px 40px rgba(0,0,0,.9)`,
+        background: C.bg, border: `1px solid ${C.line}`,
+        borderRadius: 10, overflow: "hidden",
+        boxShadow: "0 24px 60px rgba(0,0,0,.88)",
       }}>
-        <div style={{ height: 4, background: C.scroll }} />
-
         {/* Header */}
         <div style={{
-          padding: "7px 12px", background: C.amberD, borderBottom: `1px solid ${C.border}`,
           display: "flex", alignItems: "center", justifyContent: "space-between",
+          padding: "9px 14px", borderBottom: `1px solid ${C.line}`,
         }}>
-          <span style={{ fontSize: 10, fontWeight: 700, color: C.amber, textTransform: "uppercase", letterSpacing: ".1em" }}>
-            {is10 ? "Kết Quả ×10" : "Kết Quả"}
+          <span style={{ fontSize: 11, fontWeight: 700, color: C.amber, textTransform: "uppercase", letterSpacing: ".08em" }}>
+            {is10 ? "Triệu Hồi ×10" : "Triệu Hồi ×1"}
           </span>
           <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: C.muted, display: "flex" }}>
-            <X size={12} />
+            <X size={14} />
           </button>
         </div>
 
         {/* Cards */}
         <div style={{
-          padding: "12px 10px",
-          display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center",
+          padding: is10 ? "12px 8px" : "16px",
+          display: "flex", flexWrap: "wrap", gap: is10 ? 7 : 0,
+          justifyContent: "center",
         }}>
-          {results.map((r, i) => <ResultCard key={i} result={r} idx={i} />)}
+          {results.map((r, i) => <ResultCard key={i} result={r} idx={i} compact={is10} />)}
         </div>
 
-        {/* Pull again buttons */}
-        <div style={{ padding: "8px 12px 6px", borderTop: `1px solid ${C.border}`, display: "flex", gap: 6 }}>
-          <PullBtn label="×1" cost={GACHA_COST} canAfford={avocados >= GACHA_COST} onClick={onPull1} accent />
-          <PullBtn label="×10" cost={GACHA_COST_10} canAfford={avocados >= GACHA_COST_10} onClick={onPull10} />
+        {/* Pull-again */}
+        <div style={{
+          display: "flex", gap: 5, padding: "7px 10px 9px",
+          borderTop: `1px solid ${C.line}`,
+        }}>
+          <PullRow label="×1"  cost={GACHA_COST}    canAfford={avocados >= GACHA_COST}    onClick={onPull1}  primary />
+          <PullRow label="×10" cost={GACHA_COST_10} canAfford={avocados >= GACHA_COST_10} onClick={onPull10} />
           <button onClick={onClose} style={{
-            padding: "6px 10px", borderRadius: 3, border: `1px solid ${C.border}`,
-            background: "none", color: C.muted, fontSize: 10, cursor: "pointer", flexShrink: 0,
+            padding: "6px 12px", borderRadius: 5, border: `1px solid ${C.line}`,
+            background: "transparent", color: C.muted, fontSize: 10, cursor: "pointer", flexShrink: 0,
           }}>Đóng</button>
         </div>
-
-        <div style={{ height: 4, background: C.scroll }} />
       </div>
 
       <style>{`
-        @keyframes fadeUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
-        @keyframes cardIn { from{opacity:0;transform:scale(.85)} to{opacity:1;transform:scale(1)} }
+        @keyframes rIn { from{opacity:0;transform:translate(-50%,-50%)scale(.93)} to{opacity:1;transform:translate(-50%,-50%)scale(1)} }
+        @keyframes cIn { from{opacity:0;transform:translateY(6px)scale(.9)} to{opacity:1;transform:none} }
       `}</style>
+    </div>
+  );
+}
+
+// ─── Result card ──────────────────────────────────────────────────────────────
+
+function ResultCard({
+  result, idx, compact,
+}: { result: GachaResult; idx: number; compact: boolean }) {
+  const delay = `${idx * 42}ms`;
+  const W = compact ? 58 : 110;
+  const H = compact ? 74 : 140;
+
+  if (result.kind === "avocado") {
+    return (
+      <div style={{ width: W, display: "flex", flexDirection: "column", alignItems: "center", gap: 3, animation: "cIn .28s both", animationDelay: delay }}>
+        <div style={{
+          width: W, height: H, borderRadius: 5,
+          background: "rgba(200,151,58,0.07)", border: "1px solid rgba(200,151,58,0.2)",
+          display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2,
+        }}>
+          <span style={{ fontSize: compact ? 18 : 30 }}>🥑</span>
+          <span style={{ fontSize: compact ? 9 : 13, fontWeight: 800, color: C.amber }}>+{result.amount}</span>
+        </div>
+        {!compact && <span style={{ fontSize: 9, color: C.muted, textTransform: "uppercase" }}>Bơ</span>}
+      </div>
+    );
+  }
+
+  const d = result as DecoBuilding;
+  return (
+    <div style={{ width: W, display: "flex", flexDirection: "column", alignItems: "center", gap: 3, animation: "cIn .28s both", animationDelay: delay }}>
+      <div style={{
+        width: W, height: H, borderRadius: 5, overflow: "hidden", position: "relative",
+        border: `1.5px solid ${RARITY_COLOR[d.rarity]}`,
+        boxShadow: `0 0 9px ${RARITY_GLOW[d.rarity]}`,
+      }}>
+        <Image src={d.cardSrc} alt={d.name} fill unoptimized style={{ objectFit: "cover" }} />
+        <div style={{ position: "absolute", inset: 0, background: `linear-gradient(180deg,transparent 55%,${RARITY_COLOR[d.rarity]}40 100%)` }} />
+      </div>
+      <span style={{ fontSize: compact ? 7 : 9, color: C.text, textAlign: "center", lineHeight: 1.2, maxWidth: W }}>{d.name}</span>
+      <span style={{ fontSize: compact ? 7 : 8, color: RARITY_COLOR[d.rarity], letterSpacing: 1 }}>{RARITY_LABEL[d.rarity]}</span>
     </div>
   );
 }
@@ -385,19 +383,41 @@ export default function GachaOverlay({ camera, width, height }: GachaOverlayProp
     performPull, performPull10, finishAnim,
   } = useMapStore();
 
-  const canvasRef        = useRef<HTMLCanvasElement | null>(null);
-  const [stars, setStars] = useState<FallingStar[]>([]);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const cameraRef = useRef<Camera>(camera);
+  const [stars, setStars] = useState<Star[]>([]);
+
+  // Keep cameraRef always current — RAF loop reads this, not camera prop directly
+  useEffect(() => {
+    cameraRef.current = camera;
+  }, [camera]);
 
   const gate = useMemo(() => BUILDINGS.find((b) => b.id === "summoning_gate"), []);
-  const gatePos = useMemo(() => {
-    if (!gate || !width) return { x: width / 2, y: height / 2, w: 0 };
+
+  // World-space gate centre (never changes)
+  const gateWorld = useMemo(() => ({
+    x: gate ? gate.worldX + gate.width  / 2 : 0,
+    y: gate ? gate.worldY + gate.height / 2 : 0,
+  }), [gate]);
+
+  // Screen-space gate centre for popup anchor (re-derived each render when camera changes)
+  const gateCx = useMemo(() => {
+    if (!gate || !width) return width / 2;
     const st = TILE_SIZE * camera.zoom;
-    const { x, y } = worldToScreen(gate.worldX, gate.worldY, camera, width / 2, height / 2);
-    return { x, y, w: gate.width * st };
+    const { x } = worldToScreen(gate.worldX, gate.worldY, camera, width / 2, height / 2);
+    return x + gate.width * st / 2;
   }, [gate, camera, width, height]);
 
+  const gateCy = useMemo(() => {
+    if (!gate || !width) return height / 2;
+    const { y } = worldToScreen(gate.worldX, gate.worldY, camera, width / 2, height / 2);
+    return y;
+  }, [gate, camera, width, height]);
+
+  // Sync canvas size
   useEffect(() => {
-    const c = canvasRef.current; if (!c) return;
+    const c = canvasRef.current;
+    if (!c) return;
     c.width = width; c.height = height;
   }, [width, height]);
 
@@ -405,67 +425,67 @@ export default function GachaOverlay({ camera, width, height }: GachaOverlayProp
     const colorKey = batchStarColor(results);
     const count    = results.length >= 10 ? 20 : 5;
     const size     = colorKey === 5 ? 14 : colorKey === 4 ? 11 : 8;
-    const tx       = gatePos.x + gatePos.w / 2;
-    const ty       = gatePos.y;
+
     setStars(Array.from({ length: count }, (_, i) => ({
-      id:       Date.now() + i,
-      x:        (i / Math.max(count - 1, 1)) * width * 0.8 + width * 0.1 + (Math.random() - .5) * 60,
-      startY:   -20 - Math.random() * 120,
-      targetX:  tx + (Math.random() - .5) * 18,
-      targetY:  ty,
-      progress: 0,
-      speed:    0.005 + Math.random() * 0.005,
+      startX:     (i / Math.max(count - 1, 1)) * width * 0.8 + width * 0.1 + (Math.random() - 0.5) * 60,
+      startY:     -20 - Math.random() * 130,
+      gateWorldX: gateWorld.x,
+      gateWorldY: gateWorld.y,
+      offsetX:    (Math.random() - 0.5) * 22,
+      offsetY:    (Math.random() - 0.5) * 12,
+      progress:   0,
+      speed:      0.005 + Math.random() * 0.005,
       size, colorKey, trail: [], done: false,
     })));
-  }, [gatePos, width]);
-
-  const handlePull1 = useCallback(() => {
-    const r = performPull();
-    if (r) spawnStars(r);
-  }, [performPull, spawnStars]);
-
-  const handlePull10 = useCallback(() => {
-    const r = performPull10();
-    if (r) spawnStars(r);
-  }, [performPull10, spawnStars]);
+  }, [gateWorld, width]);
 
   const handleDone = useCallback(() => { setStars([]); finishAnim(); }, [finishAnim]);
 
-  useStarCanvas(canvasRef, stars, handleDone);
+  useStarCanvas(canvasRef, stars, cameraRef, width, height, handleDone);
+
+  const handlePull1 = useCallback(() => {
+    const r = performPull(); if (r) spawnStars(r);
+  }, [performPull, spawnStars]);
+
+  const handlePull10 = useCallback(() => {
+    const r = performPull10(); if (r) spawnStars(r);
+  }, [performPull10, spawnStars]);
 
   if (!width || !height) return null;
 
-  const showPullPopup = gachaOpen && !gachaAnimating && !gachaResults;
-  const showResults   = !!gachaResults && !gachaAnimating;
+  const showPopup   = gachaOpen && !gachaAnimating && !gachaResults;
+  const showResults = !!gachaResults && !gachaAnimating;
 
   return (
     <>
+      {/* Star canvas */}
       <canvas ref={canvasRef} style={{ position: "absolute", inset: 0, pointerEvents: "none", zIndex: 170 }} />
 
-      <div className="absolute inset-0 select-none" style={{ zIndex: 165, pointerEvents: "none" }}>
-        {showPullPopup && (
-          <GatePullPopup
-            gateScreenX={gatePos.x} gateScreenY={gatePos.y} gateScreenW={gatePos.w}
+      {/* Pull popup — anchored to gate, moves with camera */}
+      {showPopup && (
+        <div className="absolute inset-0 select-none" style={{ zIndex: 165, pointerEvents: "none" }}>
+          <PullPopup
+            cx={gateCx} cy={gateCy}
             avocados={avocados}
             onPull1={handlePull1} onPull10={handlePull10} onClose={closeGacha}
           />
-        )}
+        </div>
+      )}
 
-        {showResults && gachaResults && (
-          <ResultPanel
-            results={gachaResults}
-            gateScreenX={gatePos.x} gateScreenY={gatePos.y} gateScreenW={gatePos.w}
-            screenH={height}
-            avocados={avocados}
-            onPull1={() => { closeGacha(); requestAnimationFrame(openGacha); }}
-            onPull10={() => {
-              useMapStore.setState({ gachaResults: null });
-              setTimeout(() => { const r = performPull10(); if (r) spawnStars(r); }, 50);
-            }}
-            onClose={closeGacha}
-          />
-        )}
-      </div>
+      {/* Result panel — fixed centre, camera-independent */}
+      {showResults && gachaResults && (
+        <ResultPanel
+          results={gachaResults}
+          screenH={height}
+          avocados={avocados}
+          onPull1={() => { closeGacha(); requestAnimationFrame(openGacha); }}
+          onPull10={() => {
+            useMapStore.setState({ gachaResults: null });
+            setTimeout(() => { const r = performPull10(); if (r) spawnStars(r); }, 50);
+          }}
+          onClose={closeGacha}
+        />
+      )}
     </>
   );
 }
