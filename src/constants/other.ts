@@ -21,8 +21,8 @@ export const SECONDARY_BUILDINGS: Building[] = [
     name: "Mặt tiền A1",
     description:
       "Cây bơ thần kỳ tỏa bóng mát toàn khu vực, trái của nó cung cấp năng lượng vĩnh cửu cho thần dân.",
-    worldX: -2,
-    worldY: -7,
+    worldX: -1,
+    worldY: -6,
     width: 4,
     height: 3,
     type: "secondary",
@@ -36,7 +36,7 @@ export const SECONDARY_BUILDINGS: Building[] = [
     name: "Bể bơi",
     description:
       "Nơi thư giãn và tái tạo năng lượng cho các thần dân vương quốc.",
-    worldX: -11,
+    worldX: 4,
     worldY: -9,
     width: 6,
     height: 6,
@@ -51,7 +51,7 @@ export const SECONDARY_BUILDINGS: Building[] = [
     name: "Genji",
     description:
       "Sinh vật huyền thoại sống trong bể bơi, chỉ xuất hiện khi có sự kiện đặc biệt. Người ta đồn rằng tuna",
-    worldX: -9, // nằm trong pool (giữa pool theo X)
+    worldX: 6, // nằm trong pool (giữa pool theo X)
     worldY: -7, // nằm trong pool (giữa pool theo Y)
     width: 1,
     height: 1,

@@ -332,7 +332,7 @@ export const CastleContent = ({ data }: { data: Building }) => {
                 style={{ boxShadow: "0 0 20px rgba(200,160,64,0.4)" }}
               >
                 <Image
-                  src={data.imageSrc || ""}
+                  src="/assets/avatar.png"
                   alt="Pu 8bit"
                   width={64}
                   height={64}
@@ -344,10 +344,10 @@ export const CastleContent = ({ data }: { data: Building }) => {
                   Pu 8bit
                 </h3>
                 <p className="text-xs text-[#a08050] uppercase tracking-wider">
-                  Đại sứ Vương quốc Bơ
+                  Đại sứ Vương Quốc Bơ
                 </p>
                 <p className="text-[11px] text-[#7a5a30] mt-1 italic">
-                  &quot;Dẫn dắt linh hồn vương quốc qua từng con chữ và giai điệu&quot;
+                  &quot;Dẫn dắt và thu thập năng lượng cho vương quốc&quot;
                 </p>
               </div>
             </div>

@@ -22,6 +22,7 @@ import CoordDisplay from "./overplay/CoordDisplay";
 import LightSystem from "./overplay/LightSystem";
 import FarmOverlay from "../farm/FarmOverlay";
 import GachaOverlay from "../gacha/GachaOverPlay";
+import InventoryBag from "../inventory/InventoryBag";
 
 const WorldOverlay = dynamic(() => import("../map/overplay/WorldOverplay"), {
   ssr: false,
@@ -312,6 +313,7 @@ export default function WorldMap({
   return (
     <div
       ref={containerRef}
+      id="world-map-container" // ← THÊM id này
       className="relative w-full h-full overflow-hidden bg-[#05070a]"
       style={{ touchAction: "none" }}
     >
@@ -342,6 +344,13 @@ export default function WorldMap({
           height={dimensions.height}
         />
         <GachaOverlay
+          camera={camera}
+          width={dimensions.width}
+          height={dimensions.height}
+        />
+
+        {/* InventoryBag cần ở đây để PlacedDecoOnMap dùng đúng camera coords */}
+        <InventoryBag
           camera={camera}
           width={dimensions.width}
           height={dimensions.height}

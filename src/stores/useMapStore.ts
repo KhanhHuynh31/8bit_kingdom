@@ -28,10 +28,11 @@ export const useMapStore = create<MapState>()(
         tunaProgress: state.tunaProgress,
         // ── Farm persist ──
         farmPlots: state.farmPlots, // ← THÊM (lưu trạng thái cây)
-        // ── Gacha persist ──
-        gachaHistory: state.gachaHistory, // ← THÊM
-        gachaCollection: state.gachaCollection, // ← THÊM
-        gachaTotalPulls: state.gachaTotalPulls, // ← THÊM
+        // ── Gacha v3 ──
+        gachaHistory: state.gachaHistory,
+        inventory: state.inventory, // ← MỚI: kho đồ
+        placedDecos: state.placedDecos, // ← MỚI: công trình đã đặt
+        gachaTotalPulls: state.gachaTotalPulls,
       }),
     },
   ),
@@ -64,7 +65,6 @@ export const selectMergedVisible = (s: MapState) => s.mergedVisible;
 // Thêm vào phần selectors ở cuối file
 export const selectGachaOpen = (s: MapState) => s.gachaOpen;
 export const selectGachaHistory = (s: MapState) => s.gachaHistory;
-export const selectGachaCollection = (s: MapState) => s.gachaCollection;
 export const selectGachaTotalPulls = (s: MapState) => s.gachaTotalPulls;
 // Computed State
 export const selectTotalEnergy = (s: MapState) =>

@@ -100,8 +100,15 @@ export default function WorldOverlay({
       if (processedClickRef.current === actionKey) return;
       processedClickRef.current = actionKey;
       // ── Gacha gate ────────────────────────────────────
+      // Trong handleBuildingAction:
       if (building.id === "summoning_gate") {
-        useMapStore.getState().openGacha();
+        const store = useMapStore.getState();
+        // Toggle: nếu đang mở thì đóng, nếu đóng thì mở
+        if (store.gachaOpen) {
+          store.closeGacha();
+        } else {
+          store.openGacha();
+        }
         return;
       }
       // 1. Xử lý News
