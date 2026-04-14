@@ -18,11 +18,11 @@ import { useTunaState } from "@/hooks/useTunaState";
 // Components
 import HUD from "@/components/ui/HUD";
 import InfoModal from "@/components/ui/InfoModal";
-import CoordDisplay from "./overplay/CoordDisplay";
 import LightSystem from "./overplay/LightSystem";
 import FarmOverlay from "../farm/FarmOverlay";
 import GachaOverlay from "../gacha/GachaOverPlay";
 import InventoryBag from "../inventory/InventoryBag";
+import LiveCanvas from "../live/LiveCanvas";
 
 const WorldOverlay = dynamic(() => import("../map/overplay/WorldOverplay"), {
   ssr: false,
@@ -308,6 +308,7 @@ export default function WorldMap({
     canvas?.addEventListener("wheel", onWheel, { passive: false });
     return () => canvas?.removeEventListener("wheel", onWheel);
   }, [setZoom]);
+  const [isLiveMode, setIsLiveMode] = useState(false);
 
   // --- 7. Render ---
   return (
@@ -333,50 +334,60 @@ export default function WorldMap({
           onPointerLeave={onPointerUp}
           onClick={handleCanvasClick}
         />
-        <WorldOverlay
-          camera={camera}
-          width={dimensions.width}
-          height={dimensions.height}
-        />
-        <FarmOverlay
-          camera={camera}
-          width={dimensions.width}
-          height={dimensions.height}
-        />
+        {!isLiveMode && (
+          <WorldOverlay
+            camera={camera}
+            width={dimensions.width}
+            height={dimensions.height}
+          />
+        )}
+        {!isLiveMode && (
+          <FarmOverlay
+            camera={camera}
+            width={dimensions.width}
+            height={dimensions.height}
+          />
+        )}
         <GachaOverlay
           camera={camera}
           width={dimensions.width}
           height={dimensions.height}
         />
 
-        {/* InventoryBag cần ở đây để PlacedDecoOnMap dùng đúng camera coords */}
-        <InventoryBag
+        {!isLiveMode && (
+          <InventoryBag
+            camera={camera}
+            width={dimensions.width}
+            height={dimensions.height}
+          />
+        )}
+        <LiveCanvas onLiveModeChange={setIsLiveMode} />
+      </div>
+      {!isLiveMode && (
+        <LightSystem
           camera={camera}
           width={dimensions.width}
           height={dimensions.height}
+          status={status}
+          buildings={dynamicBuildings}
         />
-      </div>
-
-      <LightSystem
-        camera={camera}
-        width={dimensions.width}
-        height={dimensions.height}
-        status={status}
-        buildings={dynamicBuildings}
-      />
-
-      <div className="absolute inset-0 z-50 pointer-events-none">
-        <HUD
-          currentStatus={status}
-          currentWeather={weather}
-          manualTime={manualTime}
-          manualWeather={manualWeather}
-          setManualTime={setManualTime}
-          setManualWeather={setManualWeather}
-        />
-        <CoordDisplay />
-        <InfoModal />
-      </div>
+      )}
+      {!isLiveMode && (
+        <div
+          className="absolute inset-0 z-50 pointer-events-none"
+          style={{ opacity: isLiveMode ? 0 : 1, transition: "opacity .3s" }}
+        >
+          <HUD
+            currentStatus={status}
+            currentWeather={weather}
+            manualTime={manualTime}
+            manualWeather={manualWeather}
+            setManualTime={setManualTime}
+            setManualWeather={setManualWeather}
+          />
+          <InfoModal />
+        </div>
+      )}
     </div>
   );
 }
