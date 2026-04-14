@@ -13,7 +13,6 @@ import {
   Activity,
   Zap,
   Music,
-  Users,
   Star,
   Type,
   Trash2,
@@ -21,10 +20,10 @@ import {
 import Image from "next/image";
 
 export type WidgetKind =
-  | "chat"
+  | "frame"
   | "camera"
   | "progress"
-  | "alert"
+  | "chat"
   | "nowplaying"
   | "follower_goal"
   | "sub_count"
@@ -75,6 +74,13 @@ const WIDGET_CATALOG: WidgetDef[] = [
     defaultConfig: { title: "Chat", showAvatar: true, fontSize: 14, opacity: 90 },
     imageSrc: "/assets/live/chat_frame.png", color: L.blue,
   },
+  
+  {
+    kind: "frame", label: "Khung Live", icon: MessageSquare,
+    defaultW: 320, defaultH: 480,
+    defaultConfig: { title: "Chat", showAvatar: true, fontSize: 14, opacity: 90 },
+    imageSrc: "/assets/live/live_frame.png", color: L.blue,
+  },
   {
     kind: "camera", label: "Khung Camera", icon: Camera,
     defaultW: 320, defaultH: 180,
@@ -86,24 +92,6 @@ const WIDGET_CATALOG: WidgetDef[] = [
     defaultW: 400, defaultH: 80,
     defaultConfig: { title: "Mục tiêu", current: 750, goal: 1000, unit: "sub", color: "#22c55e" },
     imageSrc: "/assets/live/progress_bar.png", color: L.green,
-  },
-  {
-    kind: "alert", label: "Alert Donation", icon: Zap,
-    defaultW: 480, defaultH: 120,
-    defaultConfig: { title: "Cảm ơn!", message: "đã ủng hộ!", sound: true },
-    imageSrc: "/assets/live/alert_box.png", color: "#f59e0b",
-  },
-  {
-    kind: "nowplaying", label: "Đang phát", icon: Music,
-    defaultW: 360, defaultH: 90,
-    defaultConfig: { song: "Tên bài hát", artist: "Nghệ sĩ", showCover: true },
-    imageSrc: "/assets/live/now_playing.png", color: "#ec4899",
-  },
-  {
-    kind: "follower_goal", label: "Mục Tiêu Follower", icon: Users,
-    defaultW: 280, defaultH: 100,
-    defaultConfig: { current: 1240, goal: 2000, label: "Followers" },
-    imageSrc: "/assets/live/follower_goal.png", color: L.blue,
   },
   {
     kind: "sub_count", label: "Số Sub", icon: Star,
@@ -177,16 +165,7 @@ function renderWidgetContent(widget: LiveWidget, def: WidgetDef) {
         </div>
       );
     }
-    case "alert":
-      return (
-        <div style={{ padding: "10px 16px", height: "100%", display: "flex", alignItems: "center", gap: 12 }}>
-          <Zap size={28} style={{ color: "#f59e0b", flexShrink: 0 }} />
-          <div>
-            <div style={{ fontSize: 14, fontWeight: 800, color: "#f59e0b" }}>{String(cfg.title)}</div>
-            <div style={{ fontSize: 11, color: L.muted }}>Username {String(cfg.message)}</div>
-          </div>
-        </div>
-      );
+
     case "nowplaying":
       return (
         <div style={{ padding: "8px 12px", height: "100%", display: "flex", alignItems: "center", gap: 10 }}>
