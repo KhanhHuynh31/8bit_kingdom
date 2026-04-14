@@ -1,15 +1,5 @@
 "use client";
 
-/**
- * InventoryBag — Túi đồ & Quản lý công trình trang trí
- * ────────────────────────────────────────────────────────
- * • Icon túi đồ ở góc trái trên HUD.
- * • Mở túi → danh sách công trình đã có.
- * • Kéo thả (hoặc click + click trên map) để đặt công trình.
- * • Công trình đã đặt: click → popup Xóa | giữ → di chuyển.
- * • Không đặt trùng vào ô đã có building.
- */
-
 import {
   useEffect, useRef, useCallback, useState, useMemo,
 } from "react";
@@ -23,9 +13,9 @@ import { PlacedDecoration } from "@/stores/slices/gachaSlice";
 import { Camera } from "@/stores/types";
 import { BUILDINGS, TILE_SIZE } from "@/constants/map";
 import { worldToScreen, screenToWorld } from "@/utils/coords";
-import { ShoppingBag, X, Trash2, Move, Package } from "lucide-react";
+import { ShoppingBag, X, Trash2, Package } from "lucide-react";
 
-// ─── palette ──────────────────────────────────────────────────────────────────
+// ─── Palette ──────────────────────────────────────────────────────────────────
 const C = {
   bg:     "rgba(11,13,19,0.97)",
   bgCard: "rgba(20,17,10,0.95)",
@@ -41,17 +31,17 @@ const C = {
 
 // ─── Inventory Panel ──────────────────────────────────────────────────────────
 
-interface InventoryPanelProps {
+function InventoryPanel({
+  inventory, placingId, onStartPlace, onClose,
+}: {
   inventory: Record<string, number>;
-  onStartPlace: (decoId: string) => void;
-  onClose: () => void;
   placingId: string | null;
-}
-
-function InventoryPanel({ inventory, onStartPlace, onClose, placingId }: InventoryPanelProps) {
-  const owned = useMemo(() =>
-    ALL_DECOS.filter((d) => (inventory[d.id] ?? 0) > 0),
-    [inventory]
+  onStartPlace: (id: string) => void;
+  onClose: () => void;
+}) {
+  const owned = useMemo(
+    () => ALL_DECOS.filter((d) => (inventory[d.id] ?? 0) > 0),
+    [inventory],
   );
 
   return (
@@ -64,7 +54,6 @@ function InventoryPanel({ inventory, onStartPlace, onClose, placingId }: Invento
       display: "flex", flexDirection: "column",
       pointerEvents: "auto", zIndex: 300,
     }}>
-      {/* Scroll top */}
       <div style={{ height: 4, background: C.scroll, flexShrink: 0 }} />
 
       {/* Header */}
@@ -74,7 +63,6 @@ function InventoryPanel({ inventory, onStartPlace, onClose, placingId }: Invento
         display: "flex", alignItems: "center", justifyContent: "space-between",
         position: "relative",
       }}>
-        {/* Corner ornaments */}
         <div style={{ position: "absolute", top: 6, left: 6, width: 8, height: 8, borderTop: `1.5px solid ${C.amber}`, borderLeft: `1.5px solid ${C.amber}` }} />
         <div style={{ position: "absolute", top: 6, right: 6, width: 8, height: 8, borderTop: `1.5px solid ${C.amber}`, borderRight: `1.5px solid ${C.amber}` }} />
 
@@ -90,7 +78,10 @@ function InventoryPanel({ inventory, onStartPlace, onClose, placingId }: Invento
             {owned.length} loại
           </span>
         </div>
-        <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: C.muted, display: "flex" }}>
+        <button
+          onClick={onClose}
+          style={{ background: "none", border: "none", cursor: "pointer", color: C.muted, display: "flex" }}
+        >
           <X size={12} />
         </button>
       </div>
@@ -101,7 +92,7 @@ function InventoryPanel({ inventory, onStartPlace, onClose, placingId }: Invento
           padding: "6px 12px", background: "rgba(212,168,67,.1)",
           borderBottom: `1px solid ${C.border}`,
           fontSize: 9, color: C.amber, textAlign: "center",
-          animation: "pulse 1.5s ease-in-out infinite",
+          animation: "pulseBag 1.5s ease-in-out infinite",
         }}>
           📍 Click vào ô trống trên map để đặt công trình
         </div>
@@ -130,7 +121,9 @@ function InventoryPanel({ inventory, onStartPlace, onClose, placingId }: Invento
 
       <div style={{ height: 4, background: C.scroll, flexShrink: 0 }} />
 
-      <style>{`@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.6} }`}</style>
+      <style>{`
+        @keyframes pulseBag { 0%,100%{opacity:1} 50%{opacity:.55} }
+      `}</style>
     </div>
   );
 }
@@ -181,95 +174,116 @@ function DecoItem({
   );
 }
 
-// ─── Placed deco popup ────────────────────────────────────────────────────────
+// ─── Delete popup — hiện ngay trên đầu công trình ────────────────────────────
 
-function PlacedDecoPopup({
-  placed, screenX, screenY,
-  onRemove, onStartMove, onClose,
+function DeletePopup({
+  name, screenX, screenY,
+  onRemove, onClose,
 }: {
-  placed: PlacedDecoration;
-  screenX: number; screenY: number;
-  onRemove: () => void; onStartMove: () => void; onClose: () => void;
+  name: string;
+  screenX: number;
+  screenY: number;
+  onRemove: () => void;
+  onClose: () => void;
 }) {
-  const deco = ALL_DECOS.find((d) => d.id === placed.decoId);
   return (
-    <div style={{
-      position: "absolute",
-      left: screenX,
-      top: screenY - 10,
-      transform: "translate(-50%, -100%)",
-      pointerEvents: "auto", zIndex: 250,
-      animation: "fadeUp .2s both",
-    }}>
+    <div
+      // Dùng fixed để popup không bị ảnh hưởng bởi transform của parent
+      style={{
+        position: "fixed",
+        left: screenX,
+        top: screenY,
+        transform: "translate(-50%, -100%)",
+        marginTop: -10,
+        pointerEvents: "auto",
+        zIndex: 9000,
+      }}
+    >
       <div style={{
-        background: C.bg, border: `1.5px solid ${C.border}`,
-        borderRadius: 5, overflow: "hidden",
-        boxShadow: `0 8px 30px rgba(0,0,0,.8)`,
-        minWidth: 160,
+        background: C.bg,
+        border: `1px solid ${C.border}`,
+        borderRadius: 8,
+        overflow: "hidden",
+        boxShadow: "0 8px 32px rgba(0,0,0,.9)",
+        minWidth: 150,
       }}>
-        <div style={{ height: 3, background: C.scroll }} />
+        {/* Tên + nút đóng */}
         <div style={{
-          padding: "6px 10px 5px", background: C.amberD,
-          borderBottom: `1px solid ${C.border}`,
           display: "flex", alignItems: "center", justifyContent: "space-between",
+          padding: "7px 10px 6px",
+          borderBottom: `1px solid ${C.border}`,
+          gap: 6,
         }}>
-          <span style={{ fontSize: 10, fontWeight: 700, color: C.amber }}>
-            {deco?.name ?? placed.decoId}
+          <span style={{
+            fontSize: 10, fontWeight: 700, color: C.text,
+            maxWidth: 110, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+          }}>
+            {name}
           </span>
-          <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: C.muted, display: "flex" }}>
-            <X size={10} />
-          </button>
-        </div>
-        <div style={{ padding: "8px 10px", display: "flex", gap: 6 }}>
           <button
-            onClick={onStartMove}
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => { e.stopPropagation(); onClose(); }}
             style={{
-              flex: 1, padding: "6px 8px", borderRadius: 3, cursor: "pointer",
-              border: `1px solid ${C.border}`, background: "transparent",
-              color: C.muted, fontSize: 9, fontWeight: 600,
-              display: "flex", alignItems: "center", justifyContent: "center", gap: 4,
-              textTransform: "uppercase",
+              background: "none", border: "none", cursor: "pointer",
+              color: C.muted, display: "flex", padding: 0, flexShrink: 0,
             }}
           >
-            <Move size={11} /> Di chuyển
-          </button>
-          <button
-            onClick={onRemove}
-            style={{
-              flex: 1, padding: "6px 8px", borderRadius: 3, cursor: "pointer",
-              border: `1px solid ${C.red}40`, background: C.redD,
-              color: C.red, fontSize: 9, fontWeight: 600,
-              display: "flex", alignItems: "center", justifyContent: "center", gap: 4,
-              textTransform: "uppercase",
-            }}
-          >
-            <Trash2 size={11} /> Xóa bỏ
+            <X size={11} />
           </button>
         </div>
-        <div style={{ height: 3, background: C.scroll }} />
+
+        {/* Nút xóa */}
+        <div style={{ padding: "8px 10px" }}>
+          <button
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => { e.stopPropagation(); onRemove(); }}
+            style={{
+              width: "100%", padding: "8px 0",
+              borderRadius: 5,
+              border: `1px solid rgba(224,85,85,0.5)`,
+              background: C.redD,
+              color: C.red,
+              fontSize: 11, fontWeight: 700,
+              cursor: "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+            }}
+          >
+            <Trash2 size={12} />
+            Thu hồi
+          </button>
+        </div>
       </div>
+
+      {/* Caret chỉ xuống */}
       <div style={{
         width: 0, height: 0, margin: "0 auto",
-        borderLeft: "6px solid transparent", borderRight: "6px solid transparent",
+        borderLeft: "6px solid transparent",
+        borderRight: "6px solid transparent",
         borderTop: `6px solid ${C.border}`,
       }} />
-      <style>{`@keyframes fadeUp{from{opacity:0;transform:translate(-50%,-90%)}to{opacity:1;transform:translate(-50%,-100%)}}`}</style>
+
+      <style>{`
+        @keyframes popUp {
+          from { opacity: 0; transform: translate(-50%, -95%); }
+          to   { opacity: 1; transform: translate(-50%, -100%) translateY(-10px); }
+        }
+      `}</style>
     </div>
   );
 }
 
-// ─── Placed deco renderer on map ──────────────────────────────────────────────
+// ─── Placed deco on map ───────────────────────────────────────────────────────
 
 function PlacedDecoOnMap({
   placed, camera, containerW, containerH,
-  isMoving, isSelected,
+  isMoving, isSelected, instanceId,
   onPointerDown, onClick,
 }: {
   placed: PlacedDecoration;
   camera: Camera; containerW: number; containerH: number;
-  isMoving: boolean; isSelected: boolean;
+  isMoving: boolean; isSelected: boolean; instanceId: string;
   onPointerDown: (e: React.PointerEvent) => void;
-  onClick: () => void;
+  onClick: (e: React.MouseEvent) => void;
 }) {
   const deco = useMemo(() => ALL_DECOS.find((d) => d.id === placed.decoId), [placed.decoId]);
   const st   = TILE_SIZE * camera.zoom;
@@ -281,6 +295,7 @@ function PlacedDecoOnMap({
 
   return (
     <div
+      data-placed-deco={instanceId}
       onPointerDown={onPointerDown}
       onClick={onClick}
       style={{
@@ -290,9 +305,10 @@ function PlacedDecoOnMap({
         zIndex: 140,
         outline: isSelected ? `2px solid ${C.amber}` : "none",
         outlineOffset: 2,
-        boxShadow: isMoving ? `0 0 20px ${C.amberD}` : undefined,
-        opacity: isMoving ? 0.75 : 1,
+        boxShadow: isMoving ? `0 0 20px rgba(212,168,67,.25)` : "none",
+        opacity: isMoving ? 0.7 : 1,
         transition: "opacity .15s",
+        userSelect: "none",
       }}
     >
       <Image
@@ -301,13 +317,13 @@ function PlacedDecoOnMap({
         fill
         unoptimized
         draggable={false}
-        style={{ objectFit: "contain", imageRendering: "pixelated" }}
+        style={{ objectFit: "contain", imageRendering: "pixelated", pointerEvents: "none" }}
       />
     </div>
   );
 }
 
-// ─── Ghost (preview khi đang đặt/di chuyển) ──────────────────────────────────
+// ─── Ghost preview ────────────────────────────────────────────────────────────
 
 function GhostPreview({
   decoId, tileW, tileH, worldX, worldY,
@@ -321,14 +337,12 @@ function GhostPreview({
   const deco = useMemo(() => ALL_DECOS.find((d) => d.id === decoId), [decoId]);
   const st   = TILE_SIZE * camera.zoom;
   const { x, y } = worldToScreen(worldX, worldY, camera, containerW / 2, containerH / 2);
-
   if (!deco) return null;
 
   return (
     <div style={{
       position: "absolute",
-      left: x, top: y,
-      width: tileW * st, height: tileH * st,
+      left: x, top: y, width: tileW * st, height: tileH * st,
       border: `2px dashed ${valid ? C.amber : C.red}`,
       background: valid ? "rgba(212,168,67,.12)" : "rgba(224,85,85,.12)",
       borderRadius: 3, pointerEvents: "none", zIndex: 141,
@@ -336,13 +350,13 @@ function GhostPreview({
       <Image
         src={deco.imageSrc} alt=""
         fill unoptimized draggable={false}
-        style={{ objectFit: "contain", imageRendering: "pixelated", opacity: .55 }}
+        style={{ objectFit: "contain", imageRendering: "pixelated", opacity: .5 }}
       />
     </div>
   );
 }
 
-// ─── Main InventoryBag ────────────────────────────────────────────────────────
+// ─── Main ─────────────────────────────────────────────────────────────────────
 
 export interface InventoryBagProps {
   camera: Camera;
@@ -356,68 +370,96 @@ export default function InventoryBag({ camera, width, height }: InventoryBagProp
     placeDecoration, moveDecoration, removeDecoration,
   } = useMapStore();
 
-  const [bagOpen,     setBagOpen]     = useState(false);
-  /** id của công trình đang chuẩn bị đặt */
-  const [placingId,   setPlacingId]   = useState<string | null>(null);
-  /** instanceId đang chuẩn bị di chuyển */
-  const [movingId,    setMovingId]    = useState<string | null>(null);
-  /** instanceId đang hiện popup */
-  const [selectedId,  setSelectedId]  = useState<string | null>(null);
-  /** Vị trí ghost (world tile — snap 1/1) */
-  const [ghostPos,    setGhostPos]    = useState<{ x: number; y: number } | null>(null);
-  /** Dùng để track hold timer */
-  const holdTimer = useRef<ReturnType<typeof setTimeout>>(undefined as unknown as ReturnType<typeof setTimeout>);
+  const [bagOpen,    setBagOpen]    = useState(false);
+  const [placingId,  setPlacingId]  = useState<string | null>(null);
+  const [movingId,   setMovingId]   = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [ghostPos,   setGhostPos]   = useState<{ x: number; y: number } | null>(null);
 
-  // Lấy meta của item đang placing / moving
+  const holdTimer = useRef<ReturnType<typeof setTimeout>>(
+    undefined as unknown as ReturnType<typeof setTimeout>,
+  );
+  // Track nếu đây là hold-drag (không mở popup sau khi thả)
+  const isHolding = useRef(false);
+
+  // ── Active deco meta ──────────────────────────────────────────────────────
   const activeDeco = useMemo(() => {
-    const id = placingId ?? (movingId ? placedDecos.find((p) => p.instanceId === movingId)?.decoId : null);
+    const id = placingId
+      ?? (movingId ? placedDecos.find((p) => p.instanceId === movingId)?.decoId : null);
     return id ? ALL_DECOS.find((d) => d.id === id) : null;
   }, [placingId, movingId, placedDecos]);
 
-  // Kiểm tra vị trí ghost có hợp lệ không
+  // ── Ghost validity check ──────────────────────────────────────────────────
+  // Dùng cùng hàm rectsOverlap với gachaSlice để đảm bảo nhất quán.
   const ghostValid = useMemo(() => {
     if (!ghostPos || !activeDeco) return false;
-    // Kiểm tra overlap với placed decos
-    const occupied = placedDecos.some((p) => {
+    const ax = ghostPos.x, ay = ghostPos.y;
+    const aw = activeDeco.tileW, ah = activeDeco.tileH;
+
+    /** Hai rect chồng nhau không? (integer tile coords, no tolerance) */
+    const hits = (bx: number, by: number, bw: number, bh: number) =>
+      ax < bx + bw && ax + aw > bx && ay < by + bh && ay + ah > by;
+
+    // 1. Kiểm tra chồng với các deco đã đặt
+    const overPlaced = placedDecos.some((p) => {
       if (movingId && p.instanceId === movingId) return false;
-      const ax = ghostPos.x, ay = ghostPos.y;
-      const aw = activeDeco.tileW, ah = activeDeco.tileH;
-      return !(ax + aw <= p.worldX || ax >= p.worldX + p.tileW ||
-               ay + ah <= p.worldY || ay >= p.worldY + p.tileH);
+      return hits(p.worldX, p.worldY, p.tileW, p.tileH);
     });
-    // Kiểm tra overlap với các BUILDINGS tĩnh
-    const blockedByBuilding = BUILDINGS.some((b) => {
-      if (!("width" in b)) return false;
-      const bw = (b as { width: number; height: number; worldX: number; worldY: number }).width;
-      const bh = (b as { width: number; height: number; worldX: number; worldY: number }).height;
-      const bx = (b as { worldX: number }).worldX;
-      const by = (b as { worldY: number }).worldY;
-      const ax = ghostPos.x, ay = ghostPos.y;
-      const aw = activeDeco.tileW, ah = activeDeco.tileH;
-      return !(ax + aw <= bx || ax >= bx + bw || ay + ah <= by || ay >= by + bh);
+    if (overPlaced) return false;
+
+    // 2. Kiểm tra chồng với BUILDINGS tĩnh
+    // BUILDINGS có thể là nhiều kiểu khác nhau — chỉ xét những item có đủ
+    // worldX, worldY, width, height (bỏ qua item không phải building thật).
+    const overBuilding = BUILDINGS.some((b: unknown) => {
+      const bb = b as Record<string, unknown>;
+      const bx = bb.worldX, by = bb.worldY, bw = bb.width, bh = bb.height;
+      if (typeof bx !== "number" || typeof by !== "number" ||
+          typeof bw !== "number" || typeof bh !== "number") return false;
+      return hits(bx, by, bw, bh);
     });
-    return !occupied && !blockedByBuilding;
+    return !overBuilding;
   }, [ghostPos, activeDeco, placedDecos, movingId]);
 
-  // Xử lý mouse move → cập nhật ghost position (snap to integer tiles)
+  // ── Popup position — computed directly (not memo) so it's always live ────
+  const selectedPlaced = placedDecos.find((p) => p.instanceId === selectedId) ?? null;
+
+  // Tính screen position của popup từ world coords của công trình được chọn
+  // Tính inline mỗi render để luôn follow camera pan/zoom
+  let popupScreenX = 0;
+  let popupScreenY = 0;
+  if (selectedPlaced) {
+    const st = TILE_SIZE * camera.zoom;
+    const { x, y } = worldToScreen(
+      selectedPlaced.worldX, selectedPlaced.worldY,
+      camera, width / 2, height / 2,
+    );
+    // Căn giữa theo chiều ngang, neo phía trên công trình
+    popupScreenX = x + (selectedPlaced.tileW * st) / 2;
+    popupScreenY = y;
+  }
+
+  // ── Map mouse/click listeners (for ghost placing) ─────────────────────────
   const handleMapMouseMove = useCallback((e: MouseEvent) => {
     if (!activeDeco || (!placingId && !movingId)) return;
-    const rect = (e.currentTarget as HTMLElement)?.getBoundingClientRect?.() ??
-      { left: 0, top: 0, width: width, height: height };
+    const el = document.getElementById("world-map-container");
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
     const world = screenToWorld(
       e.clientX - rect.left, e.clientY - rect.top,
       camera, width / 2, height / 2,
     );
-    // Snap: lấy tâm deco rồi round
-    const snapX = Math.round(world.x - activeDeco.tileW / 2);
-    const snapY = Math.round(world.y - activeDeco.tileH / 2);
-    setGhostPos({ x: snapX, y: snapY });
+    setGhostPos({
+      x: Math.round(world.x - activeDeco.tileW / 2),
+      y: Math.round(world.y - activeDeco.tileH / 2),
+    });
   }, [activeDeco, placingId, movingId, camera, width, height]);
 
-  // Click trên map khi đang placing / moving
   const handleMapClick = useCallback((e: MouseEvent) => {
-    if (!ghostPos || !activeDeco) return;
-    if (!ghostValid) return;
+    // Nếu click vào một placed deco thì bỏ qua (handled riêng)
+    const target = e.target as HTMLElement;
+    if (target.closest("[data-placed-deco]")) return;
+
+    if (!ghostPos || !activeDeco || !ghostValid) return;
 
     if (placingId) {
       const ok = placeDecoration(placingId, ghostPos.x, ghostPos.y);
@@ -428,57 +470,49 @@ export default function InventoryBag({ camera, width, height }: InventoryBagProp
     }
   }, [ghostPos, activeDeco, ghostValid, placingId, movingId, placeDecoration, moveDecoration]);
 
-  // Cancel placing/moving
+  useEffect(() => {
+    const el = document.getElementById("world-map-container");
+    if (!el) return;
+    el.addEventListener("mousemove", handleMapMouseMove);
+    el.addEventListener("click", handleMapClick);
+    return () => {
+      el.removeEventListener("mousemove", handleMapMouseMove);
+      el.removeEventListener("click", handleMapClick);
+    };
+  }, [handleMapMouseMove, handleMapClick]);
+
+  // ── ESC to cancel ─────────────────────────────────────────────────────────
   const cancelAction = useCallback(() => {
     setPlacingId(null); setMovingId(null); setGhostPos(null);
   }, []);
 
-  // Escape key
   useEffect(() => {
-    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") cancelAction(); };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
+    const fn = (e: KeyboardEvent) => { if (e.key === "Escape") { cancelAction(); setSelectedId(null); } };
+    window.addEventListener("keydown", fn);
+    return () => window.removeEventListener("keydown", fn);
   }, [cancelAction]);
 
-  // Map container event listeners — chúng ta inject vào container div của WorldMap
-  const mapListenerRef = useRef<HTMLDivElement | null>(null);
-  useEffect(() => {
-    const el = document.getElementById("world-map-container");
-    if (!el) return;
-    const mm = (e: MouseEvent) => handleMapMouseMove(e as MouseEvent);
-    const mc = (e: MouseEvent) => handleMapClick(e as MouseEvent);
-    el.addEventListener("mousemove", mm);
-    el.addEventListener("click", mc);
-    return () => { el.removeEventListener("mousemove", mm); el.removeEventListener("click", mc); };
-  }, [handleMapMouseMove, handleMapClick]);
-
-  // selected popup position
-  const selectedPlaced  = useMemo(() => placedDecos.find((p) => p.instanceId === selectedId), [placedDecos, selectedId]);
-  const selectedScreenPos = useMemo(() => {
-    if (!selectedPlaced) return null;
-    const st = TILE_SIZE * camera.zoom;
-    const { x, y } = worldToScreen(selectedPlaced.worldX, selectedPlaced.worldY, camera, width / 2, height / 2);
-    return { x: x + selectedPlaced.tileW * st / 2, y };
-  }, [selectedPlaced, camera, width, height]);
-
-  // Hủy select khi click ngoài
+  // ── Click-outside to dismiss popup ───────────────────────────────────────
+  // Dùng "click" thay vì "mousedown" để không conflict với placed-deco onClick
   useEffect(() => {
     if (!selectedId) return;
-    const handler = (e: MouseEvent) => {
+    const fn = (e: MouseEvent) => {
       const t = e.target as HTMLElement;
-      if (!t.closest("[data-deco-popup]") && !t.closest("[data-placed-deco]")) {
-        setSelectedId(null);
-      }
+      // Không đóng nếu click vào popup hoặc chính công trình đang selected
+      if (t.closest("[data-delete-popup]")) return;
+      if (t.closest(`[data-placed-deco="${selectedId}"]`)) return;
+      setSelectedId(null);
     };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
+    // Slight delay để không bị dismiss ngay bởi click mở popup
+    const id = setTimeout(() => window.addEventListener("click", fn), 10);
+    return () => { clearTimeout(id); window.removeEventListener("click", fn); };
   }, [selectedId]);
 
   const totalItems = Object.values(inventory).reduce((a, b) => a + b, 0);
 
   return (
     <>
-      {/* ── Bag icon (left HUD) ── */}
+      {/* ── Bag icon ── */}
       <div style={{
         position: "absolute", top: 16, left: 16,
         zIndex: 400, pointerEvents: "auto",
@@ -487,7 +521,8 @@ export default function InventoryBag({ camera, width, height }: InventoryBagProp
           onClick={() => setBagOpen((v) => !v)}
           style={{
             width: 40, height: 40,
-            background: "rgba(0,0,0,.8)", border: `1px solid ${bagOpen ? C.amber : "rgba(255,255,255,.12)"}`,
+            background: "rgba(0,0,0,.8)",
+            border: `1px solid ${bagOpen ? C.amber : "rgba(255,255,255,.12)"}`,
             borderRadius: 10, cursor: "pointer",
             display: "flex", alignItems: "center", justifyContent: "center",
             boxShadow: bagOpen ? `0 0 12px ${C.amberD}` : "none",
@@ -538,12 +573,17 @@ export default function InventoryBag({ camera, width, height }: InventoryBagProp
 
       {/* ── Cancel hint ── */}
       {(placingId || movingId) && (
-        <div style={{
-          position: "absolute", bottom: 24, left: "50%", transform: "translateX(-50%)",
-          background: C.bg, border: `1px solid ${C.border}`, borderRadius: 20,
-          padding: "6px 16px", fontSize: 10, color: C.muted, pointerEvents: "auto",
-          zIndex: 300, cursor: "pointer",
-        }} onClick={cancelAction}>
+        <div
+          onClick={cancelAction}
+          style={{
+            position: "absolute", bottom: 24, left: "50%",
+            transform: "translateX(-50%)",
+            background: C.bg, border: `1px solid ${C.border}`,
+            borderRadius: 20, padding: "6px 16px",
+            fontSize: 10, color: C.muted,
+            pointerEvents: "auto", zIndex: 300, cursor: "pointer",
+          }}
+        >
           ESC hoặc nhấn đây để hủy
         </div>
       )}
@@ -552,42 +592,50 @@ export default function InventoryBag({ camera, width, height }: InventoryBagProp
       {placedDecos.map((p) => (
         <PlacedDecoOnMap
           key={p.instanceId}
-          placed={p} camera={camera}
-          containerW={width} containerH={height}
+          placed={p}
+          instanceId={p.instanceId}
+          camera={camera}
+          containerW={width}
+          containerH={height}
           isMoving={movingId === p.instanceId}
           isSelected={selectedId === p.instanceId}
           onPointerDown={(e) => {
             e.stopPropagation();
-            // Hold = 500ms → di chuyển
+            isHolding.current = false;
+            // Nếu đang placing/moving thì không trigger hold
+            if (placingId || movingId) return;
             holdTimer.current = setTimeout(() => {
+              isHolding.current = true;
               setSelectedId(null);
               setMovingId(p.instanceId);
               setPlacingId(null);
               setGhostPos(null);
             }, 500);
           }}
-          onClick={() => {
+          onClick={(e) => {
+            e.stopPropagation();
             clearTimeout(holdTimer.current);
-            if (movingId === p.instanceId) return; // ignore click khi đang move
+            // Đang moving — không làm gì
+            if (movingId === p.instanceId) return;
+            if (isHolding.current) { isHolding.current = false; return; }
+            // Toggle popup
             setSelectedId((prev) => prev === p.instanceId ? null : p.instanceId);
           }}
         />
       ))}
 
-      {/* ── Placed deco popup ── */}
-      {selectedId && selectedPlaced && selectedScreenPos && (
-        <div data-deco-popup style={{ position: "absolute", zIndex: 260, pointerEvents: "none" }}>
-          <PlacedDecoPopup
-            placed={selectedPlaced}
-            screenX={selectedScreenPos.x} screenY={selectedScreenPos.y}
-            onRemove={() => { removeDecoration(selectedId); setSelectedId(null); }}
-            onStartMove={() => {
-              setMovingId(selectedId); setPlacingId(null);
-              setSelectedId(null); setGhostPos(null);
-            }}
-            onClose={() => setSelectedId(null)}
-          />
-        </div>
+      {/* ── Delete popup — ngay trên đầu công trình ── */}
+      {selectedId && selectedPlaced && (
+        <DeletePopup
+          name={ALL_DECOS.find((d) => d.id === selectedPlaced.decoId)?.name ?? selectedPlaced.decoId}
+          screenX={popupScreenX}
+          screenY={popupScreenY}
+          onRemove={() => {
+            removeDecoration(selectedId);
+            setSelectedId(null);
+          }}
+          onClose={() => setSelectedId(null)}
+        />
       )}
     </>
   );
