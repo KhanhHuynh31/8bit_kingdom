@@ -4,7 +4,7 @@ import { useRef, useEffect, useCallback, useState, useMemo } from "react";
 import dynamic from "next/dynamic";
 
 // Stores & Constants
-import { useMapStore } from "@/stores/useMapStore";
+import { selectIsLiveMode, useMapStore } from "@/stores/useMapStore";
 import { useMapDrag } from "@/hooks/useMapDrag";
 import { MIN_ZOOM, MAX_ZOOM, BUILDINGS } from "@/constants/map";
 import { Building } from "@/stores/types";
@@ -308,7 +308,11 @@ export default function WorldMap({
     canvas?.addEventListener("wheel", onWheel, { passive: false });
     return () => canvas?.removeEventListener("wheel", onWheel);
   }, [setZoom]);
-  const [isLiveMode, setIsLiveMode] = useState(false);
+  // Lấy giá trị isLiveMode từ Store
+  const isLiveMode = useMapStore(selectIsLiveMode);
+
+  // Lấy hàm setIsLiveMode từ Store (thông qua selector actions hoặc trực tiếp)
+  const setIsLiveMode = useMapStore((s) => s.setIsLiveMode);
 
   // --- 7. Render ---
   return (
@@ -334,33 +338,26 @@ export default function WorldMap({
           onPointerLeave={onPointerUp}
           onClick={handleCanvasClick}
         />
-        {!isLiveMode && (
-          <WorldOverlay
-            camera={camera}
-            width={dimensions.width}
-            height={dimensions.height}
-          />
-        )}
-        {!isLiveMode && (
-          <FarmOverlay
-            camera={camera}
-            width={dimensions.width}
-            height={dimensions.height}
-          />
-        )}
+        <WorldOverlay
+          camera={camera}
+          width={dimensions.width}
+          height={dimensions.height}
+        />
+        <FarmOverlay
+          camera={camera}
+          width={dimensions.width}
+          height={dimensions.height}
+        />
         <GachaOverlay
           camera={camera}
           width={dimensions.width}
           height={dimensions.height}
         />
-
-        {!isLiveMode && (
-          <InventoryBag
-            camera={camera}
-            width={dimensions.width}
-            height={dimensions.height}
-          />
-        )}
+        <InventoryBag
+          camera={camera}
+          width={dimensions.width}
+          height={dimensions.height}
+        />
         <LiveCanvas onLiveModeChange={setIsLiveMode} />
       </div>
       {!isLiveMode && (
@@ -373,10 +370,7 @@ export default function WorldMap({
         />
       )}
       {!isLiveMode && (
-        <div
-          className="absolute inset-0 z-50 pointer-events-none"
-          style={{ opacity: isLiveMode ? 0 : 1, transition: "opacity .3s" }}
-        >
+        <div className="absolute inset-0 z-50 pointer-events-none">
           <HUD
             currentStatus={status}
             currentWeather={weather}

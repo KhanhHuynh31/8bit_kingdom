@@ -359,7 +359,7 @@ function ResultCard({
         border: `1.5px solid ${RARITY_COLOR[d.rarity]}`,
         boxShadow: `0 0 9px ${RARITY_GLOW[d.rarity]}`,
       }}>
-        <Image loading="eager" src={d.cardSrc} alt={d.name} fill unoptimized style={{ objectFit: "cover" }} />
+        <Image priority src={d.cardSrc} alt={d.name} fill  style={{ objectFit: "cover" }} />
         <div style={{ position: "absolute", inset: 0, background: `linear-gradient(180deg,transparent 55%,${RARITY_COLOR[d.rarity]}40 100%)` }} />
       </div>
       <span style={{ fontSize: compact ? 7 : 9, color: C.text, textAlign: "center", lineHeight: 1.2, maxWidth: W }}>{d.name}</span>

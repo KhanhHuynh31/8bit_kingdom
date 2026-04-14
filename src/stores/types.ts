@@ -127,7 +127,9 @@ export interface MapState extends FarmState, GachaState {
   t1Animation: T1Animation | null;
   t1AppearAnimation: T1AppearAnimation | null;
   mergedVisible: boolean;
-
+  // Live Mode
+  isLiveMode: boolean;
+  setIsLiveMode: (val: boolean) => void;
   // Actions
   fetchYtStats: (force?: boolean) => Promise<void>;
   unlockMemory: (slotId: number, cost: number) => boolean;

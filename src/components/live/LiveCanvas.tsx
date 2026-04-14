@@ -18,6 +18,7 @@ import {
   Type,
   Trash2,
 } from "lucide-react";
+import Image from "next/image";
 
 export type WidgetKind =
   | "chat"
@@ -122,9 +123,18 @@ function renderWidgetContent(widget: LiveWidget, def: WidgetDef) {
   const cfg = widget.config;
   if (def.imageSrc) {
     return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img src={def.imageSrc} alt={def.label} draggable={false}
-        style={{ width: "100%", height: "100%", objectFit: "fill", pointerEvents: "none" }} />
+     <Image
+        src={def.imageSrc}
+        alt={def.label}
+        fill // Thay thế cho width: 100%, height: 100%
+        draggable={false}
+        priority // Thêm dòng này để xử lý lỗi LCP bạn gặp lúc nãy
+        sizes="100vw" // Giúp Next.js tối ưu kích thước ảnh
+        style={{ 
+        objectFit: "fill", 
+        pointerEvents: "none" 
+    }}
+  />
     );
   }
   switch (widget.kind) {

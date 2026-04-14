@@ -7,6 +7,7 @@ import { createTunaSlice } from "./slices/tunaSlice";
 import { createT1Slice } from "./slices/t1Slice";
 import { createFarmSlice } from "./slices/farmSlice";
 import { createGachaSlice } from "./slices/gachaSlice";
+import { createLiveSlice } from "./slices/liveSlice";
 
 export const useMapStore = create<MapState>()(
   persist(
@@ -17,6 +18,7 @@ export const useMapStore = create<MapState>()(
       ...(createT1Slice(set, get, store) as MapState),
       ...(createFarmSlice(set, get, store) as MapState), // ← THÊM
       ...(createGachaSlice(set, get, store) as MapState), // ← THÊM
+      ...(createLiveSlice(set, get, store) as MapState), // ← THÊM
     }),
     {
       name: "map-storage",
@@ -33,6 +35,7 @@ export const useMapStore = create<MapState>()(
         inventory: state.inventory, // ← MỚI: kho đồ
         placedDecos: state.placedDecos, // ← MỚI: công trình đã đặt
         gachaTotalPulls: state.gachaTotalPulls,
+        isLiveMode: state.isLiveMode, // Thêm vào đây nếu muốn lưu vào LocalStorage
       }),
     },
   ),
@@ -46,7 +49,7 @@ export const selectYtStats = (s: MapState) => s.ytStats;
 export const selectIsLoading = (s: MapState) => s.isLoading;
 export const selectLatestNews = (s: MapState) => s.latestNews;
 export const selectTunaProgress = (s: MapState) => s.tunaProgress;
-
+export const selectIsLiveMode = (s: MapState) => s.isLiveMode;
 // Tuna runtime selectors
 export const selectTunaVisible = (s: MapState) => s.tunaVisible;
 export const selectTunaAnimOffsetY = (s: MapState) => s.tunaAnimOffsetY;

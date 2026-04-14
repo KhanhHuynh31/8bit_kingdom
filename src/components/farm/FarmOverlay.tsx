@@ -183,9 +183,9 @@ function PlotCell({
       {/* Ảnh cây */}
       {imgSrc && (
         <Image
+          priority
           src={imgSrc}
           alt=""
-          unoptimized
           draggable={false}
           fill
           style={{
