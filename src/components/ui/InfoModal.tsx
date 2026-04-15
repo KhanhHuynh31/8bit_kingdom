@@ -5,13 +5,9 @@ import { useEffect } from "react";
 import dynamic from "next/dynamic";
 import { Building } from "@/stores/types";
 
-
 // 2. Cấu hình Dynamic Imports cho từng Component
 // loading: () => <p>...</p> là tùy chọn để hiển thị khi đang tải component đó
-const CONTENT_MAP: Record<
-  string,
-  React.ComponentType<{ data: Building }>
-> = {
+const CONTENT_MAP: Record<string, React.ComponentType<{ data: Building }>> = {
   castle: dynamic(() =>
     import("../Content/CastleContent").then((mod) => mod.CastleContent),
   ),
@@ -30,7 +26,10 @@ const CONTENT_MAP: Record<
   mailbox: dynamic(() =>
     import("../Content/MailBoxContent").then((mod) => mod.MailboxContent),
   ),
-  news: dynamic(() => import("../Content/NewsContent")), // Nếu NewsContent export default
+  news: dynamic(() => import("../Content/NewsContent")),
+  arena: dynamic(() =>
+    import("../Content/ArenaContent").then((mod) => mod.ArenaContent),
+  ),
 };
 
 export default function InfoModal() {
@@ -73,7 +72,6 @@ export default function InfoModal() {
             "linear-gradient(160deg, #2a1e0e 0%, #1c1408 50%, #221910 100%)",
           boxShadow:
             "0 0 0 1px #6b4c1e, 0 0 0 3px #2a1a08, 0 0 0 4px #8b6530, 0 0 60px rgba(180,120,40,0.35), inset 0 1px 0 rgba(200,160,80,0.15)",
-          
         }}
         onClick={(e) => e.stopPropagation()}
       >

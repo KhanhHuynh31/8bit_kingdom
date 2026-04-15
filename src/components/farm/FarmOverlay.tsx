@@ -188,6 +188,7 @@ function PlotCell({
           alt=""
           draggable={false}
           fill
+          sizes="100%"
           style={{
             position: "absolute",
             bottom: Math.round(cellH * 0.07),

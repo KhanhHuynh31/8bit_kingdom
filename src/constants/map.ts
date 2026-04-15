@@ -120,6 +120,19 @@ const MAIN_BUILDINGS: Building[] = [
     interactive: true,
     zIndex: 6,
   },
+    {
+    id: "arena",
+    name: "Game Arena",
+    description: "Nơi các anh hùng thi đấu trong những trận chiến 8-bit sống động, mang lại niềm vui và sự phấn khích cho thần dân.",
+    worldX: -12,
+    worldY: -1,
+    width: 4,
+    height: 3,
+    type: "main",
+    imageSrc: "/assets/buildings/arena.png",
+    interactive: true,
+    zIndex: 6,
+  },
 ];
 
 // --- TỔNG HỢP TẤT CẢ ---
