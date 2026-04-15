@@ -4,7 +4,6 @@ import { useRef, useEffect, useCallback, useState, useMemo } from "react";
 import dynamic from "next/dynamic";
 
 // Stores & Constants
-import { selectIsLiveMode, useMapStore } from "@/stores/useMapStore";
 import { useMapDrag } from "@/hooks/useMapDrag";
 import { MIN_ZOOM, MAX_ZOOM, BUILDINGS } from "@/constants/map";
 import { Building } from "@/stores/types";
@@ -22,7 +21,7 @@ import LightSystem from "./overplay/LightSystem";
 import FarmOverlay from "../farm/FarmOverlay";
 import GachaOverlay from "../gacha/GachaOverPlay";
 import InventoryBag from "../inventory/InventoryBag";
-import LiveCanvas from "../live/LiveCanvas";
+import { useMapStore } from "@/stores/useMapStore";
 
 const WorldOverlay = dynamic(() => import("../map/overplay/WorldOverplay"), {
   ssr: false,
@@ -308,11 +307,6 @@ export default function WorldMap({
     canvas?.addEventListener("wheel", onWheel, { passive: false });
     return () => canvas?.removeEventListener("wheel", onWheel);
   }, [setZoom]);
-  // Lấy giá trị isLiveMode từ Store
-  const isLiveMode = useMapStore(selectIsLiveMode);
-
-  // Lấy hàm setIsLiveMode từ Store (thông qua selector actions hoặc trực tiếp)
-  const setIsLiveMode = useMapStore((s) => s.setIsLiveMode);
 
   // --- 7. Render ---
   return (
@@ -358,9 +352,7 @@ export default function WorldMap({
           width={dimensions.width}
           height={dimensions.height}
         />
-        <LiveCanvas onLiveModeChange={setIsLiveMode} />
       </div>
-      {!isLiveMode && (
         <LightSystem
           camera={camera}
           width={dimensions.width}
@@ -368,8 +360,7 @@ export default function WorldMap({
           status={status}
           buildings={dynamicBuildings}
         />
-      )}
-      {!isLiveMode && (
+
         <div className="absolute inset-0 z-50 pointer-events-none">
           <HUD
             currentStatus={status}
@@ -381,7 +372,6 @@ export default function WorldMap({
           />
           <InfoModal />
         </div>
-      )}
     </div>
   );
 }

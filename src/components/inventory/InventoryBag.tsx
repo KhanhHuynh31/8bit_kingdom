@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useCallback, useState, useMemo } from "react";
 import Image from "next/image";
-import { selectIsLiveMode, useMapStore } from "@/stores/useMapStore";
+import { useMapStore } from "@/stores/useMapStore";
 import {
   ALL_DECOS,
   DecoBuilding,
@@ -801,66 +801,63 @@ export default function InventoryBag({
   }, [selectedId]);
 
   const totalItems = Object.values(inventory).reduce((a, b) => a + b, 0);
-  const isLiveMode = useMapStore(selectIsLiveMode);
 
   return (
     <>
-      {!isLiveMode && (
-        <div
+      <div
+        style={{
+          position: "absolute",
+          top: 16,
+          left: 16,
+          zIndex: 400,
+          pointerEvents: "auto",
+        }}
+      >
+        <button
+          onClick={() => setBagOpen((v) => !v)}
           style={{
-            position: "absolute",
-            top: 16,
-            left: 16,
-            zIndex: 400,
-            pointerEvents: "auto",
+            width: 40,
+            height: 40,
+            background: "rgba(0,0,0,.8)",
+            border: `1px solid ${bagOpen ? C.amber : "rgba(255,255,255,.12)"}`,
+            borderRadius: 10,
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            boxShadow: bagOpen ? `0 0 12px ${C.amberD}` : "none",
+            transition: "all .2s",
+            position: "relative",
           }}
         >
-          <button
-            onClick={() => setBagOpen((v) => !v)}
-            style={{
-              width: 40,
-              height: 40,
-              background: "rgba(0,0,0,.8)",
-              border: `1px solid ${bagOpen ? C.amber : "rgba(255,255,255,.12)"}`,
-              borderRadius: 10,
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              boxShadow: bagOpen ? `0 0 12px ${C.amberD}` : "none",
-              transition: "all .2s",
-              position: "relative",
-            }}
-          >
-            <ShoppingBag
-              size={18}
-              style={{ color: bagOpen ? C.amber : "rgba(255,255,255,.45)" }}
-            />
-            {totalItems > 0 && (
-              <div
-                style={{
-                  position: "absolute",
-                  top: -4,
-                  right: -4,
-                  width: 16,
-                  height: 16,
-                  borderRadius: "50%",
-                  background: C.amber,
-                  border: "1.5px solid rgba(0,0,0,.8)",
-                  fontSize: 8,
-                  fontWeight: 800,
-                  color: "#000",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                {totalItems > 99 ? "99+" : totalItems}
-              </div>
-            )}
-          </button>
-        </div>
-      )}
+          <ShoppingBag
+            size={18}
+            style={{ color: bagOpen ? C.amber : "rgba(255,255,255,.45)" }}
+          />
+          {totalItems > 0 && (
+            <div
+              style={{
+                position: "absolute",
+                top: -4,
+                right: -4,
+                width: 16,
+                height: 16,
+                borderRadius: "50%",
+                background: C.amber,
+                border: "1.5px solid rgba(0,0,0,.8)",
+                fontSize: 8,
+                fontWeight: 800,
+                color: "#000",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              {totalItems > 99 ? "99+" : totalItems}
+            </div>
+          )}
+        </button>
+      </div>
       {bagOpen && (
         <div
           style={{

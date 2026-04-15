@@ -107,7 +107,7 @@ export default function HUD({
       </div>
 
       {/* 2. CỤM ĐIỀU KHIỂN BÊN PHẢI */}
-      <div className="absolute top-16 right-2  flex flex-col gap-4 items-end pointer-events-auto">
+      <div className="absolute top-4 right-2  flex flex-col gap-4 items-end pointer-events-auto">
         
         {/* ZOOM */}
         <div className="min-h-[40px] flex items-center justify-end">
