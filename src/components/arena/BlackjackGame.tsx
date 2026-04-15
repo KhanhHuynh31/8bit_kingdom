@@ -463,45 +463,45 @@ export const BlackjackPopup = ({
           {showWarp.active && <WarpRipple win={showWarp.win} />}
         </AnimatePresence>
 
-       <AnimatePresence>
-  {gameState.result && (
-    <motion.div
-      // Animation xuất hiện từ dưới nhẹ nhàng bay lên
-      initial={{ opacity: 0, scale: 0.9, y: 50 }}
-      animate={{ opacity: 1, scale: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.9, y: -20 }}
-      transition={{ type: "spring", stiffness: 300, damping: 25 }}
-      // Căn giữa ngang (left-1/2 -translate-x-1/2) 
-      // Căn vị trí dọc ở mức 35% từ trên xuống (top-[35%])
-      className={`absolute top-[15%] left-1/2 -translate-x-1/2 -translate-y-1/2 
+        <AnimatePresence>
+          {gameState.result && (
+            <motion.div
+              // Animation xuất hiện từ dưới nhẹ nhàng bay lên
+              initial={{ opacity: 0, scale: 0.9, y: 50 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: -20 }}
+              transition={{ type: "spring", stiffness: 300, damping: 25 }}
+              // Căn giữa ngang (left-1/2 -translate-x-1/2)
+              // Căn vị trí dọc ở mức 35% từ trên xuống (top-[35%])
+              className={`absolute top-[15%] left-1/2 -translate-x-1/2 -translate-y-1/2 
                   z-50 pointer-events-none 
                   flex flex-col items-center justify-center
                   w-fit min-w-[200px] px-10 py-5 rounded-3xl border-2
                   bg-black/80 backdrop-blur-2xl 
                   shadow-[0_0_60px_rgba(0,0,0,0.6)]
                   ${resultConfig[gameState.result].border}`}
-    >
-      <motion.span 
-        // Hiệu ứng nhịp thở cho chữ kết quả
-        animate={{ scale: [1, 1.05, 1] }}
-        transition={{ duration: 2, repeat: Infinity }}
-        className={`font-serif font-black tracking-[0.25em] ${resultConfig[gameState.result].color}`}
-        style={{ 
-          fontSize: "clamp(2.5rem, 10vw, 4.5rem)",
-          filter: "drop-shadow(0 0 20px currentColor)" 
-        }}
-      >
-        {resultConfig[gameState.result].label}
-      </motion.span>
-      
-      <div className="h-px w-full bg-gradient-to-r from-transparent via-white/20 to-transparent my-2" />
-      
-      <span className="text-white/50 text-[10px] uppercase tracking-[0.3em] font-light">
-        Trận đấu kết thúc
-      </span>
-    </motion.div>
-  )}
-</AnimatePresence>
+            >
+              <motion.span
+                // Hiệu ứng nhịp thở cho chữ kết quả
+                animate={{ scale: [1, 1.05, 1] }}
+                transition={{ duration: 2, repeat: Infinity }}
+                className={`font-serif font-black tracking-[0.25em] ${resultConfig[gameState.result].color}`}
+                style={{
+                  fontSize: "clamp(2.5rem, 10vw, 4.5rem)",
+                  filter: "drop-shadow(0 0 20px currentColor)",
+                }}
+              >
+                {resultConfig[gameState.result].label}
+              </motion.span>
+
+              <div className="h-px w-full bg-gradient-to-r from-transparent via-white/20 to-transparent my-2" />
+
+              <span className="text-white/50 text-[10px] uppercase tracking-[0.3em] font-light">
+                Trận đấu kết thúc
+              </span>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* ── HEADER ── */}
         <div className="w-full flex justify-between items-center z-20 px-5 pt-5 flex-shrink-0">
@@ -544,7 +544,7 @@ export const BlackjackPopup = ({
         {/* ── DEALER HAND ── */}
         <motion.div
           animate={{
-            scale: turn === "player" ? 0.95 : 1,
+            scale: turn === "player" ? 0.8 : 0.9,
             opacity: turn === "player" ? 0.7 : 1,
           }}
           transition={{ duration: 0.4 }}
@@ -606,84 +606,90 @@ export const BlackjackPopup = ({
               )}
           </div>
 
-          {/* Score hub */}
+          {/* Score hub - Tinh chỉnh nhỏ gọn */}
           <div
-            className="relative flex flex-col items-center bg-black/40 rounded-2xl backdrop-blur-xl border border-white/10"
-            style={{ padding: "clamp(8px,2.5vw,16px) clamp(12px,3vw,20px)" }}
+            className="relative flex flex-col items-center bg-black/40 rounded-xl backdrop-blur-xl border border-white/10"
+            // Giảm padding: Min từ 8px -> 6px, Max từ 16px -> 12px
+            style={{
+              padding: "clamp(6px, 2vw, 12px) clamp(10px, 2.5vw, 16px)",
+            }}
           >
+            {/* Các vòng tròn orbit - Giảm độ âm (inset) để thu sát vào hub */}
             <motion.div
-              className="absolute -inset-3 rounded-full border border-purple-500/20"
+              className="absolute -inset-2 rounded-full border border-purple-500/20"
               animate={{ rotate: 360 }}
               transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
             />
             <motion.div
-              className="absolute -inset-6 rounded-full border border-blue-500/10"
+              className="absolute -inset-4 rounded-full border border-blue-500/10"
               animate={{ rotate: -360 }}
               transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
             />
+
+            {/* Icon Moon - Thu nhỏ container và icon */}
             <div
-              className="absolute -top-3 -right-3 rounded-full bg-purple-500/20 flex items-center justify-center backdrop-blur-sm"
+              className="absolute -top-2 -right-2 rounded-full bg-purple-500/20 flex items-center justify-center backdrop-blur-sm"
               style={{
-                width: "clamp(24px,5vw,40px)",
-                height: "clamp(24px,5vw,40px)",
+                width: "clamp(20px, 4vw, 32px)",
+                height: "clamp(20px, 4vw, 32px)",
               }}
             >
               <Moon
                 style={{
-                  width: "clamp(10px,3vw,16px)",
-                  height: "clamp(10px,3vw,16px)",
+                  width: "clamp(8px, 2vw, 12px)",
+                  height: "clamp(8px, 2vw, 12px)",
                 }}
                 className="text-purple-400"
               />
             </div>
-            {/* Dealer score */}
+
+            {/* Dealer score - Giảm font size */}
             <motion.span
               animate={{
                 textShadow:
                   turn === "dealer"
-                    ? [
-                        "0 0 10px #a855f7",
-                        "0 0 20px #a855f7",
-                        "0 0 10px #a855f7",
-                      ]
+                    ? ["0 0 8px #a855f7", "0 0 16px #a855f7", "0 0 8px #a855f7"]
                     : "none",
               }}
               transition={{ duration: 0.8, repeat: Infinity }}
               className={`font-serif font-black ${turn === "dealer" ? "text-purple-400" : "text-zinc-600"}`}
-              style={{ fontSize: "clamp(1.25rem, 4vw, 2.25rem)" }}
+              // Cũ: 1.25rem - 2.25rem -> Mới: 1rem - 1.5rem
+              style={{ fontSize: "clamp(1rem, 3vw, 1.5rem)", lineHeight: 1 }}
             >
               {dScore}
             </motion.span>
-            <div className="h-px w-10 bg-gradient-to-r from-transparent via-purple-500 to-transparent my-0.5" />
-            {/* Player score */}
+
+            {/* Đường kẻ ngăn cách - Thu hẹp width */}
+            <div className="h-px w-6 bg-gradient-to-r from-transparent via-purple-500 to-transparent my-1" />
+
+            {/* Player score - Giảm font size */}
             <motion.span
               animate={{
                 textShadow:
                   turn === "player"
-                    ? [
-                        "0 0 10px #fbbf24",
-                        "0 0 20px #fbbf24",
-                        "0 0 10px #fbbf24",
-                      ]
+                    ? ["0 0 8px #fbbf24", "0 0 16px #fbbf24", "0 0 8px #fbbf24"]
                     : "none",
               }}
               transition={{ duration: 0.8, repeat: Infinity }}
               className={`font-serif font-black ${turn === "player" ? "text-amber-400" : "text-zinc-500"}`}
-              style={{ fontSize: "clamp(2rem, 6vw, 3.75rem)" }}
+              // Cũ: 2rem - 3.75rem -> Mới: 1.5rem - 2.5rem
+              style={{ fontSize: "clamp(1.5rem, 5vw, 2.5rem)", lineHeight: 1 }}
             >
               {pScore}
             </motion.span>
+
+            {/* Icon Sun - Thu nhỏ container và icon */}
             <div
-              className="absolute -bottom-3 -left-3 rounded-full bg-amber-500/20 flex items-center justify-center backdrop-blur-sm"
+              className="absolute -bottom-2 -left-2 rounded-full bg-amber-500/20 flex items-center justify-center backdrop-blur-sm"
               style={{
-                width: "clamp(24px,5vw,40px)",
-                height: "clamp(24px,5vw,40px)",
+                width: "clamp(20px, 4vw, 32px)",
+                height: "clamp(20px, 4vw, 32px)",
               }}
             >
               <Sun
                 style={{
-                  width: "clamp(10px,3vw,16px)",
-                  height: "clamp(10px,3vw,16px)",
+                  width: "clamp(8px, 2vw, 12px)",
+                  height: "clamp(8px, 2vw, 12px)",
                 }}
                 className="text-amber-400"
               />
@@ -741,7 +747,7 @@ export const BlackjackPopup = ({
         {/* ── PLAYER HAND ── */}
         <motion.div
           animate={{
-            scale: turn === "dealer" ? 0.95 : 1,
+            scale: turn === "dealer" ? 0.8 : 0.9,
             opacity: turn === "dealer" ? 0.7 : 1,
           }}
           transition={{ duration: 0.4 }}
@@ -765,7 +771,7 @@ export const BlackjackPopup = ({
         </motion.div>
 
         {/* ── BOTTOM BAR ── */}
-        <div className="w-full flex justify-center items-center z-20 flex-shrink-0 px-5 pb-5 gap-2">
+        <div className="w-full flex justify-center items-center z-20 flex-shrink-0 px-5 pb-2 gap-2">
           {/* Actions */}
           <div className="flex items-center gap-2 flex-shrink-0">
             {!gameState.isActive ? (
@@ -813,7 +819,7 @@ export const BlackjackPopup = ({
                     fontSize: "clamp(0.55rem, 2vw, 0.75rem)",
                   }}
                 >
-                  KHỞI TẠO
+                  Bắt đầu
                 </motion.button>
               </div>
             ) : (
@@ -844,7 +850,7 @@ export const BlackjackPopup = ({
                   className="font-black text-blue-400"
                   style={{ fontSize: "clamp(0.45rem, 1.8vw, 0.6rem)" }}
                 >
-                  GIỮ LẠI
+                  HOLD
                 </span>
               </motion.button>
             )}
