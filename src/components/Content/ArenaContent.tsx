@@ -26,7 +26,7 @@ export const ArenaContent = ({ data }: { data: Building }) => {
       <div className="space-y-10 animate-in fade-in duration-700 pb-12 custom-scrollbar max-h-[75vh]">
         {/* Banner Section - Giữ nguyên logic UI cũ của bạn */}
         <div className="relative h-60 bg-[#161009] border-2 border-[#8b6530] rounded-sm overflow-hidden group">
-          <Image src={data.imageSrc || ""} alt="Arena" fill className="object-cover opacity-60" />
+          <Image src={data.imageSrc || ""} sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" alt="Arena" fill className="object-cover opacity-60" />
           <div className="absolute bottom-6 left-6">
             <h3 className="text-white text-3xl font-black italic">ĐẤU TRƯỜNG SINH TỬ</h3>
           </div>
