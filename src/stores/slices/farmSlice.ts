@@ -11,16 +11,17 @@ import { BUILDINGS } from "@/constants/map";
  * ready   → cây trưởng thành, sẵn sàng thu hoạch
  */
 export type PlotStatus = "empty" | "seeded" | "watered" | "ready";
-
+export type CropType = "thit" | "dau" | "duong";
 export interface FarmPlot {
   id: number;
   col: number;
   row: number;
   status: PlotStatus;
-  progress: number;          // 0–100, chỉ tăng sau khi tưới
+  progress: number; // 0–100, chỉ tăng sau khi tưới
   plantedAt: number | null;
   readyAt: number | null;
   wateringUntil: number | null; // timestamp kết thúc animation mưa
+  CropType?: CropType; // Dự phòng nếu muốn mở rộng nhiều loại cây trong tương lai
 }
 
 export interface FarmDimensions {
@@ -37,7 +38,7 @@ export interface FarmState {
   farmPlots: FarmPlot[];
   farmDimensions: FarmDimensions;
 
-  seedPlot: (plotId: number) => void;
+  seedPlot: (plotId: number, cropType: CropType) => void;
   waterPlot: (plotId: number) => void;
   harvestPlot: (plotId: number) => void;
   tickFarmProgress: (now: number) => void;
@@ -62,9 +63,13 @@ export function computeFarmDimensions(): FarmDimensions {
   const b = BUILDINGS.find((b) => b.id === FARM_BUILDING_ID);
   if (!b) {
     return {
-      cols: 2, rows: 2, total: 4,
-      originX: 0, originY: 0,
-      buildingWidth: 6, buildingHeight: 5,
+      cols: 2,
+      rows: 2,
+      total: 4,
+      originX: 0,
+      originY: 0,
+      buildingWidth: 6,
+      buildingHeight: 5,
     };
   }
   // Mỗi ô đất = 2×2 tiles → gộp nội thất building
@@ -97,35 +102,40 @@ export function makePlots(dims: FarmDimensions): FarmPlot[] {
 function computeProgress(plot: FarmPlot, now: number): number {
   if (!plot.plantedAt || !plot.readyAt) return plot.progress;
   const elapsed = now - plot.plantedAt;
-  const total   = plot.readyAt - plot.plantedAt;
+  const total = plot.readyAt - plot.plantedAt;
   return Math.min(100, Math.round((elapsed / total) * 100));
 }
 
 // ─── Slice ────────────────────────────────────────────────────────────────────
 
-export const createFarmSlice: StateCreator<MapState, [], [], FarmState> = (set, get) => {
+export const createFarmSlice: StateCreator<MapState, [], [], FarmState> = (
+  set,
+  get,
+) => {
   const initialDims = computeFarmDimensions();
 
   return {
-    farmPlots:      makePlots(initialDims),
+    farmPlots: makePlots(initialDims),
     farmDimensions: initialDims,
 
-    seedPlot: (plotId) => {
+    seedPlot: (plotId: number, cropType: CropType) => {
       const { farmPlots } = get();
       const plot = farmPlots[plotId];
       if (!plot || plot.status !== "empty") return;
+
       set({
         farmPlots: farmPlots.map((p) =>
           p.id === plotId
             ? {
                 ...p,
-                status:       "seeded" as PlotStatus,
-                progress:     0,
-                plantedAt:    Date.now(),
-                readyAt:      null,
+                status: "seeded" as PlotStatus,
+                CropType: cropType,
+                progress: 0,
+                plantedAt: Date.now(),
+                readyAt: null,
                 wateringUntil: null,
               }
-            : p
+            : p,
         ),
       });
     },
@@ -141,13 +151,13 @@ export const createFarmSlice: StateCreator<MapState, [], [], FarmState> = (set, 
           p.id === plotId
             ? {
                 ...p,
-                status:        "watered" as PlotStatus,
-                progress:      0,
-                plantedAt:     now,
-                readyAt:       now + GROW_TIME_MS,
+                status: "watered" as PlotStatus,
+                progress: 0,
+                plantedAt: now,
+                readyAt: now + GROW_TIME_MS,
                 wateringUntil: now + RAIN_DURATION_MS,
               }
-            : p
+            : p,
         ),
       });
     },
@@ -161,13 +171,14 @@ export const createFarmSlice: StateCreator<MapState, [], [], FarmState> = (set, 
           p.id === plotId
             ? {
                 ...p,
-                status:        "empty" as PlotStatus,
-                progress:      0,
-                plantedAt:     null,
-                readyAt:       null,
+                status: "empty" as PlotStatus,
+                CropType: undefined,
+                progress: 0,
+                plantedAt: null,
+                readyAt: null,
                 wateringUntil: null,
               }
-            : p
+            : p,
         ),
         avocados: avocados + HARVEST_YIELD,
       });

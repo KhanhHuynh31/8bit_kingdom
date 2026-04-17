@@ -6,6 +6,7 @@ import { useMapStore } from "@/stores/useMapStore";
 import { worldToScreen } from "@/utils/coords";
 import { TILE_SIZE } from "@/constants/map";
 import {
+  CropType,
   FarmPlot,
   PlotStatus,
   computeFarmDimensions,
@@ -15,10 +16,22 @@ import { Sprout, Droplets, Wheat, X } from "lucide-react";
 
 // ─── Ảnh cây theo 3 giai đoạn ────────────────────────────────────────────────
 // Đặt ảnh vào /public/assets/farm/
-const PLANT_IMAGES: Record<"seeded" | "watered" | "ready", string> = {
-  seeded: "/assets/farm/avocado_seeded.png",
-  watered: "/assets/farm/avocado_growing.png",
-  ready: "/assets/farm/avocado_ready.png",
+const CROP_ASSETS: Record<CropType, Record<"seeded" | "watered" | "ready", string>> = {
+  thit: {
+    seeded: "/assets/farm/thit_nho.png",
+    watered: "/assets/farm/thit_trung.png",
+    ready: "/assets/farm/thit_lon.png",
+  },
+  dau: {
+    seeded: "/assets/farm/dau_nho.png",
+    watered: "/assets/farm/dau_trung.png",
+    ready: "/assets/farm/dau_lon.png",
+  },
+  duong: {
+    seeded: "/assets/farm/duong_nho.png",
+    watered: "/assets/farm/duong_trung.png",
+    ready: "/assets/farm/duong_lon.png",
+  },
 };
 
 // ─── Màu ô đất ───────────────────────────────────────────────────────────────
@@ -148,14 +161,15 @@ function PlotCell({
   selected: boolean;
   onClick: () => void;
 }) {
+  const currentAssets = CROP_ASSETS[plot.CropType || "duong"];
   const imgSrc =
     plot.status === "empty"
       ? null
       : plot.status === "seeded"
-        ? PLANT_IMAGES.seeded
+        ? currentAssets.seeded
         : plot.status === "watered"
-          ? PLANT_IMAGES.watered
-          : PLANT_IMAGES.ready;
+          ? currentAssets.watered
+          : currentAssets.ready;
 
   const isReady = plot.status === "ready";
 
@@ -275,11 +289,19 @@ function PlotPopup({
 }) {
   const POPUP_W = 170;
 
+const cropNames: Record<CropType, string> = {
+    thit: "Thịt",
+    dau: "Đậu",
+    duong: "Đường",
+  };
+
+  const currentName = plot.CropType ? cropNames[plot.CropType] : "Cây";
+
   const label: Record<PlotStatus, string> = {
     empty: "Đất trống",
-    seeded: "Cây con 🌱",
+    seeded: `${currentName} non 🌱`,
     watered: `Đang lớn… ${plot.progress}%`,
-    ready: "Sẵn thu hoạch! 🥑",
+    ready: `${currentName} chín! ✨`,
   };
   const labelColor: Record<PlotStatus, string> = {
     empty: "#9ca3af",
@@ -365,7 +387,7 @@ function PlotPopup({
       <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
         {plot.status === "empty" && (
           <Btn color="green" onClick={onSeed}>
-            <Sprout size={12} /> Trồng cây bơ
+            <Sprout size={12} /> Trồng cây
           </Btn>
         )}
         {plot.status === "seeded" && (
@@ -569,14 +591,26 @@ export default function FarmOverlay({
     setSelectedPlotId((prev) => (prev === id ? null : id));
   }, []);
 
-  const doSeed = useCallback(
-    (id: number) => {
-      seedPlot(id);
-      showToast("🌱 Đã trồng cây bơ!");
-      setSelectedPlotId(null);
-    },
-    [seedPlot, showToast],
-  );
+ const doSeed = useCallback(
+  (id: number) => {
+    const types: CropType[] = ["thit", "dau", "duong"];
+    const randomType = types[Math.floor(Math.random() * types.length)];
+    
+    // Giả định bạn cập nhật store để nhận thêm type
+    // Nếu store chưa có, bạn cần thêm trường cropType vào interface FarmPlot
+    seedPlot(id, randomType); 
+    
+    const labels: Record<CropType, string> = {
+      thit: "thịt",
+      dau: "đậu",
+      duong: "đường",
+    };
+    
+    showToast(`🌱 Đã trồng ${labels[randomType]}!`);
+    setSelectedPlotId(null);
+  },
+  [seedPlot, showToast]
+);
 
   const doWater = useCallback(
     (id: number) => {
