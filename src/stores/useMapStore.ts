@@ -7,6 +7,7 @@ import { createTunaSlice } from "./slices/tunaSlice";
 import { createT1Slice } from "./slices/t1Slice";
 import { createFarmSlice } from "./slices/farmSlice";
 import { createGachaSlice } from "./slices/gachaSlice";
+import { createPlantLabSlice } from "./slices/plantSlice";
 
 export const useMapStore = create<MapState>()(
   persist(
@@ -17,6 +18,8 @@ export const useMapStore = create<MapState>()(
       ...(createT1Slice(set, get, store) as MapState),
       ...(createFarmSlice(set, get, store) as MapState), // ← THÊM
       ...(createGachaSlice(set, get, store) as MapState), // ← THÊM
+      ...(createPlantLabSlice(set, get, store) as MapState),
+
     }),
     {
       name: "map-storage",
@@ -33,7 +36,8 @@ export const useMapStore = create<MapState>()(
         inventory: state.inventory, // ← MỚI: kho đồ
         placedDecos: state.placedDecos, // ← MỚI: công trình đã đặt
         gachaTotalPulls: state.gachaTotalPulls,
-        isLiveMode: state.isLiveMode, // Thêm vào đây nếu muốn lưu vào LocalStorage
+        savedPlants: state.savedPlants,
+
       }),
     },
   ),

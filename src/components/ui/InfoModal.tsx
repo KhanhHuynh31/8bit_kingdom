@@ -30,6 +30,9 @@ const CONTENT_MAP: Record<string, React.ComponentType<{ data: Building }>> = {
   arena: dynamic(() =>
     import("../Content/ArenaContent").then((mod) => mod.ArenaContent),
   ),
+  lab: dynamic(() =>
+    import("../Content/LabContent").then((mod) => mod.LabContent),
+  ),
 };
 
 export default function InfoModal() {
