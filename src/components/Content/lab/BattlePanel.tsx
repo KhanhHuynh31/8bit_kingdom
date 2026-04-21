@@ -17,14 +17,16 @@ import { type SavedPlant } from "@/stores/slices/plantSlice";
 import {
   TabBtn,
   ActionBtn,
-  drawPlantOnCanvas,
   type BattleState,
   canvasRoundRect,
 } from "../shared/labBattleShared";
+import { type ModuleType } from "@/constants/plantModules";
+import { DEFAULT_LAYOUT, LayoutMap, PartTransform } from "./LabPanel";
 
-// ─── Constants ───────────────────────────────────────────────────────────────
+// ─── Constants ────────────────────────────────────────────────────────────────
+
 const BASE_BATTLE_W = 1080;
-const CELL_SIZE = 120; // Ô cỏ vuông: rộng 120, cao 120
+const CELL_SIZE = 120;
 const MIN_ROWS = 1;
 const MAX_ROWS = 8;
 const DEFAULT_ROWS = 5;
@@ -33,13 +35,97 @@ const MIN_ZOOM = 0.3;
 const MAX_ZOOM = 2.0;
 const TARGET_MIN_HEIGHT = 400;
 
-// Số cột tính theo chiều rộng canvas
-const COLS = Math.floor(BASE_BATTLE_W / CELL_SIZE); // 9 cột
-
-// Tọa độ X của tâm mỗi ô cỏ (cột)
+const COLS = Math.floor(BASE_BATTLE_W / CELL_SIZE);
 const COL_CENTERS = Array.from({ length: COLS }, (_, i) => i * CELL_SIZE + CELL_SIZE / 2);
 
-// ─── SavedPlantCard ──────────────────────────────────────────────────────────
+// ─── Image cache ──────────────────────────────────────────────────────────────
+
+/** Load an image once and cache it. Returns null if imagePath is empty. */
+function loadImage(
+  cache: Record<string, HTMLImageElement>,
+  imagePath: string,
+): HTMLImageElement | null {
+  if (!imagePath) return null;
+  if (cache[imagePath]) return cache[imagePath];
+  const img = new window.Image();
+  img.src = imagePath;
+  cache[imagePath] = img;
+  return img;
+}
+
+// ─── Plant renderer using saved partSnapshots + layoutJson ───────────────────
+
+/**
+ * Draw a plant onto an offscreen canvas using the real part images and tints
+ * that were captured when the plant was saved in LabPanel.
+ */
+function drawPlantFromSnapshots(
+  ctx: CanvasRenderingContext2D,
+  plant: SavedPlant,
+  imageCache: Record<string, HTMLImageElement>,
+  canvasW: number,
+  canvasH: number,
+  idleT: number,
+): void {
+  if (!plant.partSnapshots) return;
+
+  // Parse layout — fall back to DEFAULT_LAYOUT if missing/corrupt
+  let layout: LayoutMap;
+  try {
+    layout = plant.layoutJson
+      ? (JSON.parse(plant.layoutJson) as LayoutMap)
+      : ({ ...DEFAULT_LAYOUT } as LayoutMap);
+  } catch {
+    layout = { ...DEFAULT_LAYOUT } as LayoutMap;
+  }
+
+  const cx = canvasW / 2;
+  const cy = canvasH / 2;
+
+  // Idle bob: gentle up-down
+  const bob = Math.sin(idleT * 0.06) * 2;
+
+  // Sort parts by zIndex for correct layering
+  const parts = (Object.keys(plant.partSnapshots) as ModuleType[])
+    .filter((k) => plant.partSnapshots![k] !== null)
+    .sort((a, b) => (layout[a]?.zIndex ?? 0) - (layout[b]?.zIndex ?? 0));
+
+  for (const type of parts) {
+    const snap = plant.partSnapshots[type];
+    if (!snap?.imagePath) continue;
+    const t: PartTransform = layout[type] ?? DEFAULT_LAYOUT[type];
+    if (!t.visible) continue;
+
+    const img = loadImage(imageCache, snap.imagePath);
+    if (!img?.complete || img.naturalWidth === 0) continue;
+
+    const size = Math.round(canvasW * 0.9 * t.scale);   // scale relative to canvas width
+    const drawX = cx + t.x * (canvasW / 220) - size / 2;
+    const drawY = cy + t.y * (canvasH / 280) - size / 2 + bob;
+
+    ctx.save();
+
+    if (snap.tint) {
+      // Draw image then apply tint via globalCompositeOperation
+      ctx.drawImage(img, drawX, drawY, size, size);
+      ctx.globalCompositeOperation = "multiply";
+      ctx.globalAlpha = 0.45;
+      ctx.fillStyle = snap.tint;
+      ctx.fillRect(drawX, drawY, size, size);
+      ctx.globalCompositeOperation = "source-over";
+      ctx.globalAlpha = 1;
+      // Clip back to the image silhouette — draw image again as destination-in
+      // Simpler approach: just overlay the tint; canvas multiply works well enough
+    } else {
+      ctx.drawImage(img, drawX, drawY, size, size);
+    }
+
+    ctx.restore();
+  }
+}
+
+// ─── SavedPlantCard (uses same image renderer) ───────────────────────────────
+
 function SavedPlantCard({
   plant,
   selected,
@@ -52,30 +138,41 @@ function SavedPlantCard({
   imageCache: React.RefObject<Record<string, HTMLImageElement>>;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const idleTRef = useRef(0);
+  const rafRef = useRef<number>(0);
 
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx || !imageCache.current) return;
+    // Preload all images for this plant
+    if (plant.partSnapshots && imageCache.current) {
+      (Object.values(plant.partSnapshots) as ({ imagePath: string; tint: string } | null)[]).forEach((snap) => {
+        if (snap?.imagePath) loadImage(imageCache.current!, snap.imagePath);
+      });
+    }
+  }, [plant, imageCache]);
 
-    drawPlantOnCanvas(
-      ctx,
-      plant.mods,
-      plant.colors,
-      0,
-      60,
-      72,
-      imageCache.current,
-    );
+  useEffect(() => {
+    const loop = () => {
+      idleTRef.current++;
+      const canvas = canvasRef.current;
+      const cache = imageCache.current;
+      if (canvas && cache) {
+        const ctx = canvas.getContext("2d");
+        if (ctx) {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          drawPlantFromSnapshots(ctx, plant, cache, canvas.width, canvas.height, idleTRef.current);
+        }
+      }
+      rafRef.current = requestAnimationFrame(loop);
+    };
+    rafRef.current = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(rafRef.current);
   }, [plant, imageCache]);
 
   return (
     <div
       onClick={onClick}
       style={{
-        cursor: "pointer",
-        textAlign: "center",
+        cursor: "pointer", textAlign: "center",
         opacity: selected ? 1 : 0.75,
         transform: selected ? "scale(1.08)" : "scale(1)",
         transition: "opacity 0.15s, transform 0.1s",
@@ -91,25 +188,20 @@ function SavedPlantCard({
           display: "block",
         }}
       />
-      <div
-        style={{
-          fontSize: 9,
-          color: selected ? "#93c5fd" : "#6b7280",
-          marginTop: 3,
-          maxWidth: 60,
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          whiteSpace: "nowrap",
-          fontWeight: selected ? 600 : 400,
-        }}
-      >
+      <div style={{
+        fontSize: 9, color: selected ? "#93c5fd" : "#6b7280",
+        marginTop: 3, maxWidth: 60,
+        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+        fontWeight: selected ? 600 : 400,
+      }}>
         {plant.name}
       </div>
     </div>
   );
 }
 
-// ─── Battle Renderer ──────────────────────────────────────────────────────────
+// ─── Battle renderer ──────────────────────────────────────────────────────────
+
 function renderBattle(
   ctx: CanvasRenderingContext2D,
   state: BattleState,
@@ -117,22 +209,21 @@ function renderBattle(
   imageCache: Record<string, HTMLImageElement>,
   rows: number,
   showSlots: boolean,
-) {
+): void {
   const ROW_H = CELL_SIZE;
   const battleHeight = rows * ROW_H;
   ctx.clearRect(0, 0, BASE_BATTLE_W, battleHeight);
 
-  // Nền caro vuông
+  // Checkerboard grass
   const grassColors = ["#5a9e3a", "#4d8c30"];
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < COLS; c++) {
-      const colorIndex = (r + c) % 2;
-      ctx.fillStyle = grassColors[colorIndex];
+      ctx.fillStyle = grassColors[(r + c) % 2];
       ctx.fillRect(c * CELL_SIZE, r * ROW_H, CELL_SIZE, ROW_H);
     }
   }
 
-  // Đường kẻ nhẹ giữa các hàng
+  // Row dividers
   for (let r = 1; r < rows; r++) {
     ctx.beginPath();
     ctx.moveTo(0, r * ROW_H);
@@ -142,7 +233,7 @@ function renderBattle(
     ctx.stroke();
   }
 
-  // Khung đặt cây (slot indicators) – hiển thị tại tâm mỗi ô khi đang chọn cây và chưa chạy
+  // Slot indicators
   if (showSlots && !state.running) {
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < COLS; c++) {
@@ -151,38 +242,31 @@ function renderBattle(
         ctx.strokeStyle = "rgba(255,255,255,0.4)";
         ctx.lineWidth = 2;
         ctx.beginPath();
-        // Vẽ khung tròn hoặc vuông bo góc nhẹ quanh vị trí đặt cây
         canvasRoundRect(ctx, cx - 20, cy - 24, 40, 48, 8);
         ctx.stroke();
       }
     }
   }
 
-  // Vẽ cây tại tâm ô
+  // Draw plants using real images
   state.plants.forEach((pp) => {
     const plant = plants.find((p) => p.id === pp.plantId);
     if (!plant) return;
     const colX = COL_CENTERS[pp.col];
     const rowY = pp.row * ROW_H + ROW_H / 2;
+
+    // Offscreen canvas sized to one cell
     const mini = document.createElement("canvas");
-    // Cây chiếm khoảng 60x72, đặt chính giữa ô
-    mini.width = 60;
-    mini.height = 72;
+    mini.width = CELL_SIZE;
+    mini.height = CELL_SIZE;
     const mc = mini.getContext("2d");
     if (!mc) return;
-    drawPlantOnCanvas(
-      mc,
-      plant.mods,
-      plant.colors,
-      pp.t,
-      mini.width,
-      mini.height,
-      imageCache,
-    );
+
+    drawPlantFromSnapshots(mc, plant, imageCache, mini.width, mini.height, pp.t);
     ctx.drawImage(mini, colX - mini.width / 2, rowY - mini.height / 2);
   });
 
-  // Đạn
+  // Bullets
   state.bullets.forEach((b) => {
     const cy = b.row * ROW_H + ROW_H / 2;
     ctx.beginPath();
@@ -202,7 +286,7 @@ function renderBattle(
     ctx.stroke();
   });
 
-  // Zombie
+  // Zombies
   state.zombies.forEach((z) => {
     const cy = z.row * ROW_H + 4;
     const wobble = Math.sin(z.t * 0.18) * 3;
@@ -228,6 +312,7 @@ function renderBattle(
     ctx.fillText("🧟", z.x, cy + ROW_H * 0.4);
     ctx.restore();
 
+    // HP bar
     const barW = 36;
     const barX = z.x - barW / 2;
     const barY = cy + ROW_H * 0.78;
@@ -240,6 +325,7 @@ function renderBattle(
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
+
 export default function BattlePanel({ onSwitchLab }: { onSwitchLab: () => void }) {
   const savedPlants = useMapStore((s) => s.savedPlants);
 
@@ -267,8 +353,16 @@ export default function BattlePanel({ onSwitchLab }: { onSwitchLab: () => void }
   });
 
   const savedPlantsRef = useRef<SavedPlant[]>(savedPlants);
+  useEffect(() => { savedPlantsRef.current = savedPlants; }, [savedPlants]);
+
+  // Preload images whenever savedPlants changes
   useEffect(() => {
-    savedPlantsRef.current = savedPlants;
+    savedPlants.forEach((plant) => {
+      if (!plant.partSnapshots) return;
+      (Object.values(plant.partSnapshots) as ({ imagePath: string; tint: string } | null)[]).forEach((snap) => {
+        if (snap?.imagePath) loadImage(imageCacheRef.current, snap.imagePath);
+      });
+    });
   }, [savedPlants]);
 
   const [selectedPlantIdx, setSelectedPlantIdx] = useState<number | null>(null);
@@ -278,17 +372,12 @@ export default function BattlePanel({ onSwitchLab }: { onSwitchLab: () => void }
   const [score, setScore] = useState({ defeated: 0, survived: 0 });
 
   const selectedPlantIdxRef = useRef(selectedPlantIdx);
-  useEffect(() => {
-    selectedPlantIdxRef.current = selectedPlantIdx;
-  }, [selectedPlantIdx]);
+  useEffect(() => { selectedPlantIdxRef.current = selectedPlantIdx; }, [selectedPlantIdx]);
 
   const ROW_H = CELL_SIZE;
   const battleHeight = rows * ROW_H;
 
-  const autoScale = useMemo(() => {
-    return Math.max(1.0, TARGET_MIN_HEIGHT / battleHeight);
-  }, [battleHeight]);
-
+  const autoScale = useMemo(() => Math.max(1.0, TARGET_MIN_HEIGHT / battleHeight), [battleHeight]);
   const finalScale = zoom * autoScale;
   const scaledWidth = BASE_BATTLE_W * finalScale;
   const scaledHeight = battleHeight * finalScale;
@@ -297,21 +386,16 @@ export default function BattlePanel({ onSwitchLab }: { onSwitchLab: () => void }
     (e: React.MouseEvent<HTMLCanvasElement>) => {
       const s = battleRef.current;
       const rect = canvasRef.current!.getBoundingClientRect();
-      const scaleX = BASE_BATTLE_W / rect.width;
-      const scaleY = battleHeight / rect.height;
-      const bx = (e.clientX - rect.left) * scaleX;
-      const by = (e.clientY - rect.top) * scaleY;
-      
-      // Xác định ô (hàng, cột) dựa trên tọa độ click
+      const bx = (e.clientX - rect.left) * (BASE_BATTLE_W / rect.width);
+      const by = (e.clientY - rect.top) * (battleHeight / rect.height);
       const col = Math.floor(bx / CELL_SIZE);
       const row = Math.floor(by / ROW_H);
-      
       if (row < 0 || row >= rows || col < 0 || col >= COLS) return;
 
       if (shovelMode) {
-        const plantIndex = s.plants.findIndex((p) => p.row === row && p.col === col);
-        if (plantIndex !== -1) {
-          s.plants.splice(plantIndex, 1);
+        const idx = s.plants.findIndex((p) => p.row === row && p.col === col);
+        if (idx !== -1) {
+          s.plants.splice(idx, 1);
           setInfo(`Đã nhổ cây ở hàng ${row + 1}, cột ${col + 1}`);
         } else {
           setInfo("Không có cây để nhổ ở đây");
@@ -319,35 +403,18 @@ export default function BattlePanel({ onSwitchLab }: { onSwitchLab: () => void }
         return;
       }
 
-      if (s.running) {
-        setInfo("Không thể đặt khi đang chiến!");
-        return;
-      }
+      if (s.running) { setInfo("Không thể đặt khi đang chiến!"); return; }
 
       const idx = selectedPlantIdxRef.current;
-      if (idx === null) {
-        setInfo("Chọn cây trước!");
-        return;
-      }
+      if (idx === null) { setInfo("Chọn cây trước!"); return; }
       const plant = savedPlantsRef.current[idx];
       if (!plant) return;
+      if (s.plants.find((p) => p.row === row && p.col === col)) { setInfo("Ô này đã có cây!"); return; }
 
-      if (s.plants.find((p) => p.row === row && p.col === col)) {
-        setInfo("Ô này đã có cây!");
-        return;
-      }
-
-      s.plants.push({
-        uid: Date.now(),
-        plantId: plant.id,
-        row,
-        col,
-        t: 0,
-        lastShot: 0,
-      });
+      s.plants.push({ uid: Date.now(), plantId: plant.id, row, col, t: 0, lastShot: 0 });
       setInfo(`Đặt ${plant.name} tại hàng ${row + 1}, cột ${col + 1}`);
     },
-    [battleHeight, ROW_H, rows, shovelMode]
+    [battleHeight, ROW_H, rows, shovelMode],
   );
 
   const stopWave = useCallback(() => {
@@ -360,33 +427,15 @@ export default function BattlePanel({ onSwitchLab }: { onSwitchLab: () => void }
   }, []);
 
   const startWave = useCallback(() => {
-    if (battleRef.current.plants.length === 0) {
-      setInfo("Đặt ít nhất 1 cây!");
-      return;
-    }
+    if (battleRef.current.plants.length === 0) { setInfo("Đặt ít nhất 1 cây!"); return; }
     const s = battleRef.current;
-    Object.assign(s, {
-      running: true,
-      zombies: [],
-      bullets: [],
-      frame: 0,
-      nextSpawn: 80,
-      wave: 0,
-      defeated: 0,
-      survived: 0,
-      zombieId: 0,
-      bulletId: 0,
-    });
+    Object.assign(s, { running: true, zombies: [], bullets: [], frame: 0, nextSpawn: 80, wave: 0, defeated: 0, survived: 0, zombieId: 0, bulletId: 0 });
     setWaveActive(true);
     setScore({ defeated: 0, survived: 0 });
     setInfo("Sóng zombie đang tấn công! 🧟");
   }, []);
 
-  const clearAll = useCallback(() => {
-    stopWave();
-    battleRef.current.plants = [];
-    setInfo("Đã xóa bàn.");
-  }, [stopWave]);
+  const clearAll = useCallback(() => { stopWave(); battleRef.current.plants = []; setInfo("Đã xóa bàn."); }, [stopWave]);
 
   const handleRowsChange = (newRows: number) => {
     if (waveActive) stopWave();
@@ -396,20 +445,11 @@ export default function BattlePanel({ onSwitchLab }: { onSwitchLab: () => void }
   };
 
   const toggleFullscreen = useCallback(() => {
-    if (!containerRef.current) return;
-    if (!document.fullscreenElement) {
-      containerRef.current.requestFullscreen();
-    } else {
-      document.exitFullscreen();
-    }
+    if (!document.fullscreenElement) containerRef.current?.requestFullscreen();
+    else document.exitFullscreen();
   }, []);
 
-  const handleZoomChange = (newZoom: number) => {
-    setZoom(Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, newZoom)));
-  };
-  const handleZoomIn = () => handleZoomChange(zoom + 0.1);
-  const handleZoomOut = () => handleZoomChange(zoom - 0.1);
-  const resetZoom = () => setZoom(DEFAULT_ZOOM);
+  const handleZoomChange = (v: number) => setZoom(Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, v)));
 
   // Game loop
   useEffect(() => {
@@ -422,28 +462,19 @@ export default function BattlePanel({ onSwitchLab }: { onSwitchLab: () => void }
       const s = battleRef.current;
       const plants = savedPlantsRef.current;
       s.frame++;
-
-      s.plants.forEach((pp) => {
-        pp.t++;
-      });
+      s.plants.forEach((pp) => { pp.t++; });
 
       if (s.running) {
-        const baseMax = 15 + s.wave * 5;
-        const maxZombies = Math.floor(baseMax * zombieMultiplier);
+        const maxZombies = Math.floor((15 + s.wave * 5) * zombieMultiplier);
 
         if (s.frame >= s.nextSpawn && s.zombieId < maxZombies) {
           const row = Math.floor(Math.random() * rows);
           const hp = 80 + s.wave * 20;
           s.zombies.push({
-            id: s.zombieId++,
-            row,
-            x: BASE_BATTLE_W + 30,
-            hp,
-            maxHp: hp,
+            id: s.zombieId++, row,
+            x: BASE_BATTLE_W + 30, hp, maxHp: hp,
             speed: 0.35 + Math.random() * 0.25 + s.wave * 0.04,
-            t: 0,
-            frozen: 0,
-            poison: 0,
+            t: 0, frozen: 0, poison: 0,
           });
           s.nextSpawn = s.frame + 80 + Math.floor(Math.random() * 60);
         }
@@ -453,22 +484,10 @@ export default function BattlePanel({ onSwitchLab }: { onSwitchLab: () => void }
           if (!plant) return;
           const fireRate = Math.max(40, 110 - plant.agi * 3.5);
           const colX = COL_CENTERS[pp.col];
-          if (
-            s.zombies.some((z) => z.row === pp.row && z.x > colX) &&
-            pp.t - pp.lastShot > fireRate
-          ) {
+          if (s.zombies.some((z) => z.row === pp.row && z.x > colX) && pp.t - pp.lastShot > fireRate) {
             pp.lastShot = pp.t;
             const bt = plant.bulletType;
-            s.bullets.push({
-              id: s.bulletId++,
-              row: pp.row,
-              x: colX + 20,
-              color: bt.color,
-              size: bt.size,
-              dmg: bt.dmg,
-              speed: bt.speed,
-              effectName: plant.effect?.name,
-            });
+            s.bullets.push({ id: s.bulletId++, row: pp.row, x: colX + 20, color: bt.color, size: bt.size, dmg: bt.dmg, speed: bt.speed, effectName: plant.effect?.name });
           }
         });
 
@@ -483,8 +502,7 @@ export default function BattlePanel({ onSwitchLab }: { onSwitchLab: () => void }
             z.hp -= b.dmg * (0.8 + Math.random() * 0.4);
             if (b.effectName === "Đóng băng") z.frozen = 120;
             if (b.effectName === "Độc") z.poison = 180;
-            if (b.effectName === "Đẩy lùi")
-              z.x = Math.min(BASE_BATTLE_W + 30, z.x + 40);
+            if (b.effectName === "Đẩy lùi") z.x = Math.min(BASE_BATTLE_W + 30, z.x + 40);
             if (z.hp <= 0) {
               s.zombies.splice(i, 1);
               s.defeated++;
@@ -499,16 +517,9 @@ export default function BattlePanel({ onSwitchLab }: { onSwitchLab: () => void }
         s.zombies = s.zombies.filter((z) => {
           z.t++;
           if (z.frozen > 0) z.frozen--;
-          if (z.poison > 0) {
-            z.poison--;
-            if (z.t % 20 === 0) z.hp -= 5;
-          }
+          if (z.poison > 0) { z.poison--; if (z.t % 20 === 0) z.hp -= 5; }
           z.x -= z.frozen > 0 ? z.speed * 0.2 : z.speed;
-          if (z.hp <= 0) {
-            s.defeated++;
-            setScore((p) => ({ ...p, defeated: s.defeated }));
-            return false;
-          }
+          if (z.hp <= 0) { s.defeated++; setScore((p) => ({ ...p, defeated: s.defeated })); return false; }
           if (z.x < -20) {
             s.survived++;
             setScore((p) => ({ ...p, survived: s.survived }));
@@ -526,14 +537,7 @@ export default function BattlePanel({ onSwitchLab }: { onSwitchLab: () => void }
         }
       }
 
-      renderBattle(
-        ctx,
-        s,
-        plants,
-        imageCacheRef.current,
-        rows,
-        selectedPlantIdx !== null && !shovelMode
-      );
+      renderBattle(ctx, s, plants, imageCacheRef.current, rows, selectedPlantIdx !== null && !shovelMode);
       rafRef.current = requestAnimationFrame(loop);
     };
 
@@ -542,58 +546,21 @@ export default function BattlePanel({ onSwitchLab }: { onSwitchLab: () => void }
   }, [rows, zombieMultiplier, shovelMode, selectedPlantIdx]);
 
   return (
-    <div
-      style={{
-        color: "#c8a870",
-        height: "100%",
-        display: "flex",
-        flexDirection: "column",
-      }}
-    >
+    <div style={{ color: "#c8a870", height: "100%", display: "flex", flexDirection: "column" }}>
       {/* Tabs */}
-      <div
-        style={{
-          display: "flex",
-          gap: 8,
-          marginBottom: 12,
-          borderBottom: "1px solid rgba(107,76,30,0.4)",
-          paddingBottom: 10,
-        }}
-      >
-        <TabBtn onClick={onSwitchLab}>
-          <FlaskConical size={14} /> Lai Tạo
-        </TabBtn>
-        <TabBtn active>
-          <Swords size={14} /> Thực Chiến
-        </TabBtn>
+      <div style={{ display: "flex", gap: 8, marginBottom: 12, borderBottom: "1px solid rgba(107,76,30,0.4)", paddingBottom: 10 }}>
+        <TabBtn onClick={onSwitchLab}><FlaskConical size={14} /> Lai Tạo</TabBtn>
+        <TabBtn active><Swords size={14} /> Thực Chiến</TabBtn>
       </div>
 
-      {/* Panel điều khiển */}
-      <div
-        style={{
-          display: "flex",
-          flexWrap: "wrap",
-          gap: 12,
-          marginBottom: 12,
-          alignItems: "flex-start",
-        }}
-      >
+      {/* Controls */}
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginBottom: 12, alignItems: "flex-start" }}>
         <div style={{ flex: 2, minWidth: 220 }}>
-          <div
-            style={{
-              fontSize: 10,
-              color: "#6b7280",
-              textTransform: "uppercase",
-              letterSpacing: "0.05em",
-              marginBottom: 4,
-            }}
-          >
+          <div style={{ fontSize: 10, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4 }}>
             Cây đã tạo
           </div>
           {savedPlants.length === 0 ? (
-            <div style={{ fontSize: 12, color: "#6b7280" }}>
-              Chưa có cây. Tạo ở tab Lai Tạo.
-            </div>
+            <div style={{ fontSize: 12, color: "#6b7280" }}>Chưa có cây. Tạo ở tab Lai Tạo.</div>
           ) : (
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               {savedPlants.map((p, i) => (
@@ -601,10 +568,7 @@ export default function BattlePanel({ onSwitchLab }: { onSwitchLab: () => void }
                   key={p.id}
                   plant={p}
                   selected={selectedPlantIdx === i}
-                  onClick={() => {
-                    setSelectedPlantIdx(i);
-                    setShovelMode(false);
-                  }}
+                  onClick={() => { setSelectedPlantIdx(i); setShovelMode(false); }}
                   imageCache={imageCacheRef}
                 />
               ))}
@@ -613,73 +577,35 @@ export default function BattlePanel({ onSwitchLab }: { onSwitchLab: () => void }
         </div>
 
         <div style={{ flex: 1, minWidth: 240 }}>
-          <div
-            style={{
-              display: "flex",
-              gap: 12,
-              flexWrap: "wrap",
-              alignItems: "center",
-            }}
-          >
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
               <span style={{ fontSize: 11, color: "#9ca3af" }}>Hàng:</span>
-              <input
-                type="range"
-                min={MIN_ROWS}
-                max={MAX_ROWS}
-                value={rows}
+              <input type="range" min={MIN_ROWS} max={MAX_ROWS} value={rows}
                 onChange={(e) => handleRowsChange(Number(e.target.value))}
-                disabled={waveActive}
-                style={{ width: 80 }}
-              />
+                disabled={waveActive} style={{ width: 80 }} />
               <span style={{ fontSize: 12, minWidth: 20 }}>{rows}</span>
             </div>
 
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
               <span style={{ fontSize: 11, color: "#9ca3af" }}>Zombie:</span>
-              <input
-                type="range"
-                min={0.5}
-                max={3.0}
-                step={0.1}
-                value={zombieMultiplier}
+              <input type="range" min={0.5} max={3.0} step={0.1} value={zombieMultiplier}
                 onChange={(e) => setZombieMultiplier(Number(e.target.value))}
-                disabled={waveActive}
-                style={{ width: 80 }}
-              />
-              <span style={{ fontSize: 12, minWidth: 30 }}>
-                {zombieMultiplier.toFixed(1)}x
-              </span>
+                disabled={waveActive} style={{ width: 80 }} />
+              <span style={{ fontSize: 12, minWidth: 30 }}>{zombieMultiplier.toFixed(1)}x</span>
             </div>
 
             <div style={{ display: "flex", gap: 4 }}>
-              <ActionBtn
-                onClick={waveActive ? stopWave : startWave}
-                color={waveActive ? "red" : "green"}
-              >
+              <ActionBtn onClick={waveActive ? stopWave : startWave} color={waveActive ? "red" : "green"}>
                 <Swords size={13} /> {waveActive ? "Dừng" : "Bắt đầu"}
               </ActionBtn>
-              <ActionBtn onClick={clearAll} color="gray">
-                <Trash2 size={13} /> Xóa
-              </ActionBtn>
-              <ActionBtn
-                onClick={() => setShovelMode((prev) => !prev)}
-                color={shovelMode ? "amber" : "gray"}
-              >
+              <ActionBtn onClick={clearAll} color="gray"><Trash2 size={13} /> Xóa</ActionBtn>
+              <ActionBtn onClick={() => setShovelMode((p) => !p)} color={shovelMode ? "amber" : "gray"}>
                 <Shovel size={13} /> Cuốc
               </ActionBtn>
             </div>
           </div>
 
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              marginTop: 8,
-              fontSize: 11,
-              color: "#9ca3af",
-            }}
-          >
+          <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, fontSize: 11, color: "#9ca3af" }}>
             <span>{info}</span>
             <span>
               <span style={{ color: "#4ade80" }}>☠ {score.defeated}</span>{" "}
@@ -689,75 +615,25 @@ export default function BattlePanel({ onSwitchLab }: { onSwitchLab: () => void }
         </div>
       </div>
 
-      {/* Vùng chiến đấu */}
+      {/* Battle area */}
       <div
         ref={containerRef}
-        style={{
-          position: "relative",
-          borderRadius: 12,
-          border: "1px solid rgba(80,140,60,0.35)",
-          background: "#0f1a0a",
-          overflow: "hidden",
-          flex: 1,
-          display: "flex",
-          flexDirection: "column",
-        }}
+        style={{ position: "relative", borderRadius: 12, border: "1px solid rgba(80,140,60,0.35)", background: "#0f1a0a", overflow: "hidden", flex: 1, display: "flex", flexDirection: "column" }}
       >
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 6,
-            padding: "6px 10px",
-            background: "rgba(0,0,0,0.3)",
-            borderBottom: "1px solid rgba(80,140,60,0.2)",
-          }}
-        >
-          <button onClick={handleZoomOut} style={iconButtonStyle} title="Thu nhỏ">
-            <ZoomOut size={14} />
-          </button>
-          <input
-            type="range"
-            min={MIN_ZOOM}
-            max={MAX_ZOOM}
-            step={0.05}
-            value={zoom}
-            onChange={(e) => handleZoomChange(Number(e.target.value))}
-            style={{ width: 120 }}
-          />
-          <button onClick={handleZoomIn} style={iconButtonStyle} title="Phóng to">
-            <ZoomIn size={14} />
-          </button>
-          <button onClick={resetZoom} style={iconButtonStyle} title="Đặt lại zoom">
-            <RotateCcw size={14} />
-          </button>
-          <span style={{ fontSize: 12, color: "#c8a870", marginLeft: 4 }}>
-            {Math.round(finalScale * 100)}%
-          </span>
+        {/* Zoom toolbar */}
+        <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 10px", background: "rgba(0,0,0,0.3)", borderBottom: "1px solid rgba(80,140,60,0.2)" }}>
+          <button onClick={() => handleZoomChange(zoom - 0.1)} style={iconButtonStyle} title="Thu nhỏ"><ZoomOut size={14} /></button>
+          <input type="range" min={MIN_ZOOM} max={MAX_ZOOM} step={0.05} value={zoom}
+            onChange={(e) => handleZoomChange(Number(e.target.value))} style={{ width: 120 }} />
+          <button onClick={() => handleZoomChange(zoom + 0.1)} style={iconButtonStyle} title="Phóng to"><ZoomIn size={14} /></button>
+          <button onClick={() => setZoom(DEFAULT_ZOOM)} style={iconButtonStyle} title="Reset zoom"><RotateCcw size={14} /></button>
+          <span style={{ fontSize: 12, color: "#c8a870", marginLeft: 4 }}>{Math.round(finalScale * 100)}%</span>
           <div style={{ flex: 1 }} />
-          <button onClick={toggleFullscreen} style={iconButtonStyle} title="Toàn màn hình">
-            <Maximize size={14} />
-          </button>
+          <button onClick={toggleFullscreen} style={iconButtonStyle} title="Toàn màn hình"><Maximize size={14} /></button>
         </div>
 
-        <div
-          style={{
-            flex: 1,
-            overflow: "auto",
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            background: "#0a1207",
-          }}
-        >
-          <div
-            style={{
-              width: `${scaledWidth}px`,
-              height: `${scaledHeight}px`,
-              position: "relative",
-              margin: "auto",
-            }}
-          >
+        <div style={{ flex: 1, overflow: "auto", display: "flex", justifyContent: "center", alignItems: "center", background: "#0a1207" }}>
+          <div style={{ width: `${scaledWidth}px`, height: `${scaledHeight}px`, position: "relative", margin: "auto" }}>
             <canvas
               ref={canvasRef}
               width={BASE_BATTLE_W}
@@ -776,31 +652,16 @@ export default function BattlePanel({ onSwitchLab }: { onSwitchLab: () => void }
         </div>
       </div>
 
-      <div
-        style={{
-          fontSize: 10,
-          color: "#4b5563",
-          marginTop: 6,
-          textAlign: "center",
-        }}
-      >
-        {shovelMode
-          ? "Click vào cây để nhổ · Chọn cây để thoát chế độ cuốc"
-          : "Click ô để đặt cây · Dùng cuốc để xóa"}
+      <div style={{ fontSize: 10, color: "#4b5563", marginTop: 6, textAlign: "center" }}>
+        {shovelMode ? "Click vào cây để nhổ · Chọn cây để thoát chế độ cuốc" : "Click ô để đặt cây · Dùng cuốc để xóa"}
       </div>
     </div>
   );
 }
 
 const iconButtonStyle: React.CSSProperties = {
-  background: "transparent",
-  border: "none",
-  borderRadius: 4,
-  color: "#c8a870",
-  cursor: "pointer",
-  padding: "4px 6px",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
+  background: "transparent", border: "none", borderRadius: 4,
+  color: "#c8a870", cursor: "pointer", padding: "4px 6px",
+  display: "flex", alignItems: "center", justifyContent: "center",
   transition: "background 0.2s",
 };

@@ -2,7 +2,6 @@
 import { StateCreator } from "zustand";
 import { MapState } from "../types";
 import {
-  PlantColors,
   BulletType,
   PlantEffect,
   ModuleType,
@@ -14,13 +13,21 @@ export interface SavedPlant {
   id: number;
   name: string;
   mods: Record<ModuleType, string | null>;
-  colors: PlantColors;
+  layout?: string;
   str: number;
   agi: number;
   lck: number;
   bulletType: BulletType;
   effect: PlantEffect | null;
   createdAt: number;
+   layoutJson?: string;
+ 
+  /**
+   * Snapshot ảnh thật + tint của từng bộ phận tại thời điểm lưu.
+   * BattlePanel dùng trường này để render cây chính xác.
+   */
+  partSnapshots?: Partial<Record<ModuleType, { imagePath: string; tint: string } | null>>;
+
 }
 
 export interface PlantLabState {
