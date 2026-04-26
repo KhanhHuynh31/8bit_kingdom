@@ -1,11 +1,7 @@
 // src/stores/slices/plantLabSlice.ts
 import { StateCreator } from "zustand";
 import { MapState } from "../types";
-import {
-  BulletType,
-  PlantEffect,
-  ModuleType,
-} from "@/constants/plantModules";
+import { BulletType, PlantEffect, ModuleType } from "@/constants/plantModules";
 
 // ─── Types (export để dùng ở nơi khác) ───────────────────────────────────────
 
@@ -20,14 +16,20 @@ export interface SavedPlant {
   bulletType: BulletType;
   effect: PlantEffect | null;
   createdAt: number;
-   layoutJson?: string;
- 
+  layoutJson?: string;
+  bulletLayoutJson?: string;
+  bulletPrimaryColor?: string;
+  bulletRadius?: number;
+  bulletDmg?: number;
+  bulletSpeed?: number;
+
   /**
    * Snapshot ảnh thật + tint của từng bộ phận tại thời điểm lưu.
    * BattlePanel dùng trường này để render cây chính xác.
    */
-  partSnapshots?: Partial<Record<ModuleType, { imagePath: string; tint: string } | null>>;
-
+  partSnapshots?: Partial<
+    Record<ModuleType, { imagePath: string; tint: string } | null>
+  >;
 }
 
 export interface PlantLabState {

@@ -12,7 +12,7 @@ export type PlacedModule = {
   x: number;
   y: number;
   scale: number;
-  rotation: number; // degrees
+  rotation: number;
   visible: boolean;
   zIndex: number;
   tint: string;
@@ -71,11 +71,11 @@ export function ActionBtn({
 }) {
   const colors: Record<string, { bg: string; border: string; text: string }> = {
     green: { bg: "rgba(74,222,128,0.15)", border: "rgba(74,222,128,0.5)", text: "#86efac" },
-    red: { bg: "rgba(248,113,113,0.15)", border: "rgba(248,113,113,0.5)", text: "#fca5a5" },
-    amber: { bg: "rgba(251,191,36,0.15)", border: "rgba(251,191,36,0.5)", text: "#fde68a" },
-    gray: { bg: "rgba(156,163,175,0.1)", border: "rgba(156,163,175,0.3)", text: "#9ca3af" },
+    red:   { bg: "rgba(248,113,113,0.15)", border: "rgba(248,113,113,0.5)", text: "#fca5a5" },
+    amber: { bg: "rgba(251,191,36,0.15)",  border: "rgba(251,191,36,0.5)",  text: "#fde68a" },
+    gray:  { bg: "rgba(156,163,175,0.1)",  border: "rgba(156,163,175,0.3)", text: "#9ca3af" },
   };
-  const c = colors[color] || colors.gray;
+  const c = colors[color] ?? colors.gray;
   return (
     <button
       onClick={onClick}
@@ -124,10 +124,8 @@ export function StatBar({
 
 export function canvasRoundRect(
   ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  w: number,
-  h: number,
+  x: number, y: number,
+  w: number, h: number,
   r: number,
 ) {
   ctx.beginPath();
@@ -174,6 +172,9 @@ export interface BattleState {
     dmg: number;
     speed: number;
     effectName?: string;
+    // ▼ NEW: custom bullet design fields
+    layoutJson?: string;
+    animTime: number;
   }[];
   frame: number;
   running: boolean;
@@ -204,20 +205,16 @@ export function loadImage(
 export function parsePlacedModules(plant: SavedPlant): PlacedModule[] {
   if (!plant.layoutJson) return [];
   try {
-    const parsed = JSON.parse(plant.layoutJson);
-    // New format: array of PlacedModule
+    const parsed = JSON.parse(plant.layoutJson) as unknown;
     if (Array.isArray(parsed)) return parsed as PlacedModule[];
-    // Old format: LayoutMap object — convert best-effort using partSnapshots
     if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
       const instances: PlacedModule[] = [];
       let counter = 0;
-      (Object.keys(parsed) as ModuleType[]).forEach((type) => {
-        const t = parsed[type] as {
-          x: number; y: number; scale: number; visible: boolean; zIndex: number; tint?: string;
-        };
+      const obj = parsed as Record<string, { x: number; y: number; scale: number; visible: boolean; zIndex: number; tint?: string }>;
+      (Object.keys(obj) as ModuleType[]).forEach((type) => {
+        const t = obj[type];
         const snap = plant.partSnapshots?.[type];
         if (!snap?.imagePath) return;
-        // Find moduleId by matching imagePath
         const modData = PLANT_MODULES[type].find((m) => m.imagePath === snap.imagePath);
         if (!modData) return;
         instances.push({
@@ -265,10 +262,7 @@ export function drawPlantModulesOnCanvas(
 
   for (const inst of sorted) {
     const modData = PLANT_MODULES[inst.type].find((m) => m.id === inst.moduleId);
-    const imagePath =
-      modData?.imagePath ??
-      partSnapshots?.[inst.type]?.imagePath ??
-      "";
+    const imagePath = modData?.imagePath ?? partSnapshots?.[inst.type]?.imagePath ?? "";
     if (!imagePath) continue;
 
     const img = loadImage(imageCache, imagePath);
@@ -281,7 +275,6 @@ export function drawPlantModulesOnCanvas(
 
     ctx.save();
 
-    // Apply rotation around the part's center
     if (inst.rotation !== 0) {
       ctx.translate(drawX + size / 2, drawY + size / 2);
       ctx.rotate((inst.rotation * Math.PI) / 180);

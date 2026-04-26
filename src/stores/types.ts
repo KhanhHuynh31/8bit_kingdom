@@ -1,3 +1,4 @@
+import { BulletSlice } from "./slices/bulletSlice";
 import { FarmState } from "./slices/farmSlice";
 import { GachaState } from "./slices/gachaSlice";
 import { PlantLabState } from "./slices/plantSlice";
@@ -98,7 +99,7 @@ export interface T1AppearAnimation {
   duration: number;
 }
 
-export interface MapState extends FarmState, GachaState, PlantLabState   {
+export interface MapState extends FarmState, GachaState, PlantLabState, BulletSlice   {
   // ← THÊM
   // Building & General
   camera: Camera;

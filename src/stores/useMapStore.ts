@@ -8,6 +8,7 @@ import { createT1Slice } from "./slices/t1Slice";
 import { createFarmSlice } from "./slices/farmSlice";
 import { createGachaSlice } from "./slices/gachaSlice";
 import { createPlantLabSlice } from "./slices/plantSlice";
+import { createBulletSlice } from "./slices/bulletSlice";
 
 export const useMapStore = create<MapState>()(
   persist(
@@ -19,6 +20,7 @@ export const useMapStore = create<MapState>()(
       ...(createFarmSlice(set, get, store) as MapState), // ← THÊM
       ...(createGachaSlice(set, get, store) as MapState), // ← THÊM
       ...(createPlantLabSlice(set, get, store) as MapState),
+      ...(createBulletSlice(set, get, store) as MapState),
 
     }),
     {
